@@ -2,13 +2,13 @@ const express = require('express');
 const axios = require('axios')
 const mongoose = require("mongoose");
 const router = express.Router();
-const apiKey = '9656e146df53439e85473528e1af6e21'
+const apiKey = process.env.NEWS_API_KEY;
 const User = require('../models/User');
 
 let articles = [];
 let lastUpdate = new Date();
 
-mongoose.connect('mongodb+srv://skalap2endra:kGOM7z5V54vBFdp1@cluster0.vannl.mongodb.net/assignment3?retryWrites=true&w=majority&appName=Cluster0')
+mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('News: Connected to MongoDB Atlas'))
     .catch((err) => console.error('Error connecting to MongoDB Atlas:', err));
 
@@ -20,7 +20,7 @@ router.get('/news', async (req, res) => {
     const startIndex = (page - 1) * pageSize;
     const endIndex = startIndex + pageSize;
 
-    const queries = ['GPU', 'AMD', 'NVIDIA', 'RTX', 'PC'];
+    const queries = ['Star', 'Galaxy', 'NASA', 'Space', 'SpaceX', 'Planet', 'Astronomy', 'Spaceship', 'Satellite'];
 
     try {
         // If array is empty or 1-2 days was passed

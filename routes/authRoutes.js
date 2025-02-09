@@ -1,17 +1,92 @@
 const express = require('express');
 const User = require('../models/User');
 const mongoose = require("mongoose");
+const bcrypt = require('bcryptjs');
+const passport = require('passport');
+const { MailerSend, EmailParams, Sender, Recipient } = require("mailersend");
+const LocalStrategy = require('passport-local');
+const { body, validationResult } = require('express-validator');
+const crypto = require('crypto');
+require('dotenv').config();
 const router = express.Router();
 const adminCode = 'admin1243'
 
-mongoose.connect('mongodb+srv://skalap2endra:kGOM7z5V54vBFdp1@cluster0.vannl.mongodb.net/assignment3?retryWrites=true&w=majority&appName=Cluster0')
+mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('Auth: Connected to MongoDB Atlas'))
     .catch((err) => console.error('Error connecting to MongoDB Atlas:', err));
+
+const isAuthenticated = (req, res, next) => {
+    if (req.isAuthenticated()) return next();
+    res.redirect('/login');
+};
+
+const mailerSend = new MailerSend({
+    apiKey: process.env.MAIL_API_KEY,
+});
+
+const sendEmail = async (to, subject, html) => {
+    try {
+        const senderEmail = process.env.SENDER_EMAIL;
+        const senderName = process.env.SENDER_NAME || "Mailersend Trial";
+
+        const sender = new Sender(senderEmail, senderName);
+        const recipients = [new Recipient(to, "Guest")];
+
+        const emailParams = new EmailParams()
+            .setFrom(sender)
+            .setTo(recipients)
+            .setReplyTo(sender)
+            .setSubject(subject)
+            .setHtml(html)
+            .setText(html.replace(/<[^>]*>/g, "")); // Convert HTML to plain text
+
+        const response = await mailerSend.email.send(emailParams);
+        return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (error) {
+        console.error("❌ Error sending email:" + error);
+        return false;
+    }
+};
+
+passport.use(new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
+    try {
+        const user = await User.findOne({ email: email });
+        if (user === null) return done(null, false, { message: 'Invalid email or password' });
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return done(null, false, { message: 'Invalid email or password' });
+
+        return done(null, user);
+    } catch (err) {
+        return done(err);
+    }
+}));
+
+passport.serializeUser((user, done) => done(null, user.user_id));
+passport.deserializeUser(async (id, done) => {
+    try {
+        const user = await User.findOne({user_id: id});
+        done(null, user);
+    } catch (err) {
+        done(err);
+    }
+});
 
 // REGISTER part
 router.get('/register', (req, res) => res.render('auth/registration', {role: 'user'}));
 
-router.post('/register', async (req, res) => {
+router.post('/register', [
+  body('email').isEmail().withMessage('Invalid email address'),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+    .matches(/[A-Z]/).withMessage('Password must contain an uppercase letter')
+    .matches(/[a-z]/).withMessage('Password must contain a lowercase letter')
+    .matches(/[0-9]/).withMessage('Password must contain a number')
+    .matches(/[@$!%*?&]/).withMessage('Password must contain a special character')],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errorMessage: errors.array()[0]['msg'] });
+    }
     const { username, email, password, role, secretCode } = req.body;
 
     const existingUser = await User.findOne({ username: username });
@@ -45,16 +120,27 @@ router.post('/register', async (req, res) => {
     res.redirect('/login');
 });
 
-router.post('/register/admin', async (req, res) => {
+router.post('/register/admin', [
+  body('email').isEmail().withMessage('Invalid email address'),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+    .matches(/[A-Z]/).withMessage('Password must contain an uppercase letter')
+    .matches(/[a-z]/).withMessage('Password must contain a lowercase letter')
+    .matches(/[0-9]/).withMessage('Password must contain a number')
+    .matches(/[@$!%*?&]/).withMessage('Password must contain a special character')],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errorMessage: errors.array()[0]['msg'] });
+    }
     const { username, email, password, role, secretCode } = req.body;
 
     const existingUser = await User.findOne({ username: username });
     if (existingUser !== null) {
-        return res.render('templates/error', { errorMessage: 'User already exists' });
+        return res.status(400).json({ errorMessage: 'User already exists' });
     }
 
     if (role === 'admin' && secretCode !== adminCode) {
-        return res.render('templates/error', { errorMessage: 'Invalid secret code' });
+        return res.status(400).json({ errorMessage: 'Invalid secret code' });
     }
 
     // Find new free ID from collection (starts from 0)
@@ -80,36 +166,31 @@ router.post('/register/admin', async (req, res) => {
 });
 
 // LOGIN part
-router.get('/login', (req, res) => {
-    if (req.session.userId !== undefined) {
-        return res.redirect('/');
-    }
-    res.render('auth/login');
-});
+router.get('/login', (req, res) => res.render('auth/login'));
 
-router.post('/login', async (req, res) => {
-    const { username, password } = req.body;
-    const user = await User.findOne({ username: username });
+router.post('/login', (req, res, next) => {
+    passport.authenticate('local', (err, user, info) => {
+        if (err) {
+            return next(err);
+        }
 
-    if (user === null) {
-        return res.render('templates/error', {errorMessage: 'User not found'});
-    }
-    if (password !== user.password){
-        return res.render('templates/error', {errorMessage: 'Invalid password'});
-    }
+        if (!user) {
+            return res.status(400).json({ errorMessage: 'User not found' });
+        }
+        req.logIn(user, (err) => {
+            if (err) return next(err);
 
-    req.session.userId = user.user_id;
-    req.session.username = user.username;
-    req.session.isLoggedIn = true;
-    res.redirect('/');
+            req.session.userId = user.user_id;
+            req.session.username = user.username;
+            req.session.isLoggedIn = true;
+
+            return res.redirect('/');
+        });
+    })(req, res, next);
 });
 
 // UPDATE part
-router.get('/update', async (req, res) => {
-    if (req.session.userId === undefined) {
-        return res.redirect('/login');
-    }
-
+router.get('/update', isAuthenticated, async (req, res) => {
     const user = await getUser(req.session.userId);
     if (user === null) {
         return res.render('templates/error', {errorMessage: 'User not found'});
@@ -117,11 +198,7 @@ router.get('/update', async (req, res) => {
     res.render('profile/update', {user});
 })
 
-router.get('/update/:id', async (req, res) => {
-    if (req.session.userId === undefined) {
-        return res.redirect('/login');
-    }
-
+router.get('/update/:id', isAuthenticated, async (req, res) => {
     const user = await getUser(req.params.id);
     if (user === null) {
         return res.render('templates/error', {errorMessage: 'User not found'});
@@ -129,9 +206,12 @@ router.get('/update/:id', async (req, res) => {
     res.render('profile/update', {user});
 })
 
-router.post('/update', async (req, res) => {
-    if (req.session.userId === undefined) {
-        return res.redirect('/login');
+router.post('/update', isAuthenticated, [
+    body('email').isEmail().withMessage('Invalid email address'),
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errorMessage: errors.array()[0]['msg'] });
     }
 
     const { user_id, username, email, role, secret_code } = req.body;
@@ -167,20 +247,12 @@ router.post('/update', async (req, res) => {
 });
 
 // USER part
-router.get('/admin', async (req, res) => {
-    if (req.session.userId === undefined) {
-        return res.redirect('/login');
-    }
-
+router.get('/admin', isAuthenticated, async (req, res) => {
     const users = await User.find({});
     res.render('profile/admin', {users});
 })
 
-router.get('/profile', async (req, res) => {
-    if (req.session.userId === undefined) {
-        return res.redirect('/login');
-    }
-
+router.get('/profile', isAuthenticated, async (req, res) => {
     const user = await getUser(req.session.userId);
     if (user === null) {
         return res.render('templates/error', {errorMessage: 'User not found'});
@@ -198,11 +270,7 @@ router.get('/logout', (req, res) => {
     });
 });
 
-router.get('/delete-account', async (req, res) => {
-    if (req.session.userId === undefined) {
-        return res.redirect('/');
-    }
-
+router.get('/delete-account', isAuthenticated, async (req, res) => {
     const userId = req.session.userId;
 
     try {
@@ -218,11 +286,7 @@ router.get('/delete-account', async (req, res) => {
     }
 });
 
-router.get('/delete-account/:id', async (req, res) => {
-    if (req.session.userId === undefined) {
-        return res.redirect('/');
-    }
-
+router.get('/delete-account/:id', isAuthenticated, async (req, res) => {
     const userId = Number(req.params.id);
 
     try {

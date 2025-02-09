@@ -1,17 +1,21 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
-const axios = require('axios');
+const cookieParser = require('cookie-parser');
 const session = require('express-session');
+const passport = require('passport');
+const flash = require('connect-flash');
+const path = require('path');
 const authRouter = require('./routes/authRoutes');
 const newsRouter = require('./routes/newsRoutes');
 const buildRouter = require('./routes/buildRoutes');
-
+const itemRouter = require('./routes/itemRoutes');
+const Item = require('./models/Item');
 const app = express();
 const PORT = 3000;
 
 // MongoDB Atlas connection
-mongoose.connect('mongodb+srv://skalap2endra:kGOM7z5V54vBFdp1@cluster0.vannl.mongodb.net/assignment3?retryWrites=true&w=majority&appName=Cluster0')
+mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("Index: Connected to MongoDB Atlas"))
     .catch(err => console.log("Error during connect to MongoDB: ", err));
 
@@ -20,15 +24,19 @@ app.set('views', './views');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static('public'));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Session middleware
 app.use(session({
     secret: 'ff63d7fe7d4cb794a5b97a0708e560b9c015fb59a4a0e85dbf1d11a47f14ed32',
     resave: false,
     saveUninitialized: true,
-    cookie: { maxAge: 1000 * 60 * 60 }
+    cookie: { secure: false },
 }));
-
+app.use(passport.initialize());
+app.use(passport.session());
+app.use(flash());
+app.use(cookieParser());
 app.use((req, res, next) => {
     res.locals.isLoggedIn = req.session.isLoggedIn || false;
     res.locals.username = req.session.username || 'Guest';
@@ -39,8 +47,9 @@ app.use((req, res, next) => {
 app.use('/', authRouter);
 app.use('/', newsRouter);
 app.use('/', buildRouter);
+app.use('/', itemRouter)
 
-app.get('/', (req, res) => res.render('index'))
+app.get('/', async (req, res) => res.render("index"))
 
 // Start the server
 app.listen(PORT, () => {

@@ -16,7 +16,7 @@
 
 <div class="container bg-white shadow rounded w-50 mt-4 p-5 pb-4">
     <h1 class="text-center">Update Page</h1>
-    <form action="/update" method="POST">
+    <div>
         <input type="hidden" name="user_id" value="<%= user.user_id %>" />
 
         <div class="w-50 mx-auto mt-4">
@@ -46,13 +46,55 @@
             <button type="submit" class="btn btn-outline-success fs-5 my-3">Update User</button>
             <button class="btn btn-outline-danger fs-5" onclick="window.history.back()">Discard</button>
         </div>
-    </form>
+    </div>
 
 </div>
 
 <%- include('../templates/footer'); %>
 </body>
 <script>
+    const error = document.getElementById('error');
+    const updateBtn = document.getElementById('updateBtn');
+
+    updateBtn.addEventListener('click', async function () {
+        const username = document.getElementById('username').value;
+        const email = document.getElementById('email').value;
+        const user_id = document.getElementById('user_id').value;
+        const role = document.getElementById('role').value;
+        const secret_code = document.getElementById('secret-code').value;
+
+        if(username === '' || email === '') {
+            outputError('Please, fill out the fields');
+            return;
+        }
+
+        try {
+            const response = await fetch('/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ user_id, username, email, role, secret_code }),
+                credentials: 'include'
+            });
+
+            if (response.redirected) {
+                window.location.href = response.url;
+            } else if (!response.ok) {
+                const data = await response.json();
+                outputError(data.errorMessage || 'Registration failed')
+            }
+        } catch (error) {
+            outputError('An error occurred:', error);
+        }
+    });
+
+    function outputError(message){
+        error.style.display = 'block';
+        error.innerHTML = `<p>${message}</p>`;
+        setTimeout(error.style.display = 'block', 15000);
+    }
+
     function toggleSecretCode() {
         const roleSelect = document.getElementById('role');
         const secretCodeDiv = document.getElementById('secretCodeDiv');

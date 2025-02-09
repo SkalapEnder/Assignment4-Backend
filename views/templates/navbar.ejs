@@ -1,10 +1,53 @@
+<script>
+    async function translatePage(sourceLang, targetLang) {
+        const elements = document.querySelectorAll("body, body *:not(script):not(style):not(iframe):not(noscript)");
+
+        for (let element of elements) {
+            if (element.childNodes.length === 1 && element.childNodes[0].nodeType === Node.TEXT_NODE) {
+                const originalText = element.textContent.trim();
+                if (originalText) {
+                    try {
+                        const translatedText = await translateText(originalText, sourceLang, targetLang);
+                        element.textContent = translatedText;
+                    } catch (error) {
+                        console.error("Translation error:", error);
+                    }
+                }
+            }
+        }
+    }
+
+    async function translateText(text, sourceLang, targetLang) {
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            return data[0].map(item => item[0]).join("");
+        } catch (error) {
+            console.error("Error fetching translation:", error);
+            return text;
+        }
+    }
+</script>
 <nav class="navbar navbar-expand-md navbar-dark bg-dark fs-3">
     <div class="collapse navbar-collapse justify-content-around" id="navbarsExampleDefault">
-        <a class="navbar-brand fs-3 p-2 fw-bold" href="/">Assignment 3</a>
+        <a class="navbar-brand fs-3 p-2 fw-bold" href="/">Assignment 4</a>
             <ul class="navbar-nav ">
                 <li class="nav-item d-flex">
                     <a class="nav-link active" href="/news">News</a>
                     <a class="nav-link active" href="/build">GPU</a>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Language
+                        </a>
+                        <ul class="dropdown-menu" id="languages">
+                            <li><a class="dropdown-item" href="#" onclick="translatePage('en', 'es')">Spanish</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="translatePage('en', 'fr')">French</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="translatePage('en', 'de')">German</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="translatePage('en', 'it')">Italian</a></li>
+                        </ul>
+                    </li>
                     <% if (isLoggedIn) { %>
                         <a class="nav-link" href="/profile"><img src="https://eu.ui-avatars.com/api/?name=<%= username %>&size=250" style="height: 40px; width: 40px" class="rounded-circle" alt="Profile Picture" /></a>
                     <% } else { %>
