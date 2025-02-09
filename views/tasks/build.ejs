@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPU Select</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        #search-amazon {
+            max-height: 700px;
+            overflow: auto;
+        }
+        body{
+            background-color: #dbdbdb;
+        }
+        .card-img-top {
+            min-width: 100%;
+            height: 15vw;
+            object-fit: cover;
+        }
+        .card{
+            height: 100%;
+        }
+        #gpu-favorites{
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+<%- include('../templates/navbar'); %>
+<div class="container bg-white shadow rounded my-3 p-5 pb-4">
+    <h1 class="text-center mb-4">GPU select</h1>
+
+    <div id="gpus-recent" class="mb-4">
+        <h3>Recent GPUs</h3>
+        <div class="d-flex overflow-auto">
+            <% if (products_recent && products_recent.length > 0) { %>
+                <% products_recent.forEach(product => { %>
+                    <div class="col-md-4 col-lg-3 mb-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title"><%= product.Model %></h5>
+                            </div>
+                            <div class="card-footer d-flex justify-content-around">
+                                <input type="hidden" class="recent-gpu" id="<%= product.identifier %>" value="<%= product.identifier %>">
+                                <button class="btn btn-outline-primary" id="gpu-find-recent">Find</button>
+                            </div>
+                        </div>
+                    </div>
+                <% }); %>
+            <% } else { %>
+                <p>No recently viewed GPUs.</p>
+            <% } %>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-around ">
+        <!-- GPU part -->
+        <div style="width: 50%;">
+            <div class="mb-3">
+                <label for="gpu-input" class="form-label">Enter GPU Name:</label>
+                <div class="d-flex">
+                    <input type="text" id="gpu-input" class="form-control me-3" placeholder="Type a GPU name (e.g., RTX 3060)" />
+                    <button class="btn btn-primary" id="searchButton">Search</button>
+                </div>
+            </div>
+
+            <div id="gpu-options-container" class=" mb-3">
+                <label for="gpu-select" class="form-label">Select a GPU:</label>
+                <select id="gpu-select" class="form-select">
+                    <option value="">Start typing above to load GPUs...</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="gpu-details" class="ms-4" style="width: 40%;">
+            <h4>GPU Details:</h4>
+            <p><strong>Model:</strong> <span id="gpu-model">N/A</span></p>
+            <p><strong>Vendor:</strong> <span id="gpu-vendor">N/A</span></p>
+            <p><strong>Identifier:</strong> <span id="gpu-identifier">N/A</span></p>
+            <p><strong>Memory Size:</strong> <span id="gpu-memory-size">N/A</span></p>
+            <p><strong>Memory Type:</strong> <span id="gpu-memory-type">N/A</span></p>
+            <p><strong>Bus Interface:</strong> <span id="gpu-bus-interface">N/A</span></p>
+            <p><strong>TDP (Watts):</strong> <span id="gpu-tdp">N/A</span></p>
+        </div>
+    </div>
+
+    <div class="mx-auto">
+        <h3>Search in Amazon</h3>
+        <div id="search-amazon" class="row">
+
+        </div>
+    </div>
+</div>
+
+<%- include('../templates/footer'); %>
+
+<script>
+    const gpuInput = document.getElementById('gpu-input');
+    const gpuSelect = document.getElementById('gpu-select');
+    const searchButton = document.getElementById('searchButton');
+    const gpuRecentButton = document.getElementById('gpu-find-recent');
+    const gpuDetails = {
+        model: document.getElementById('gpu-model'),
+        vendor: document.getElementById('gpu-vendor'),
+        identifier: document.getElementById('gpu-identifier'),
+        memorySize: document.getElementById('gpu-memory-size'),
+        memoryType: document.getElementById('gpu-memory-type'),
+        busInterface: document.getElementById('gpu-bus-interface'),
+        tdp: document.getElementById('gpu-tdp'),
+    };
+
+    gpuInput.addEventListener('input', async function () {
+        const userInput = this.value;
+
+        if (userInput.length > 0) {
+            try {
+                const response = await fetch(`/api/gpus?search=${encodeURIComponent(userInput)}`);
+                if (!response.ok) throw new Error('Failed to fetch GPU data');
+
+                const gpus = await response.json();
+
+                // Clear previous options
+                gpuSelect.innerHTML = '<option value="">Select a GPU</option>';
+
+                gpus.forEach(gpu => {
+                    const option = document.createElement('option');
+                    option.value = gpu.Model;
+                    option.textContent = `${gpu.Model} - ${gpu.identifier} `;
+                    option.dataset.details = JSON.stringify(gpu);
+                    gpuSelect.appendChild(option);
+                });
+
+                if (gpus.length === 0) {
+                    gpuSelect.innerHTML = '<option value="">No GPUs found</option>';
+                }
+            } catch (error) {
+                console.error(error);
+                gpuSelect.innerHTML = '<option value="">Error fetching GPUs</option>';
+            }
+        } else {
+            gpuSelect.innerHTML = '<option value="">Start typing above to load GPUs...</option>';
+        }
+    });
+
+    gpuSelect.addEventListener('change', function () {
+        if (gpuSelect.value !== null) {
+            searchButton.disabled = false;
+        } else {
+            searchButton.disabled = true;
+        }
+
+        const selectedOption = gpuSelect.options[gpuSelect.selectedIndex];
+        const gpuDetailsData = selectedOption.dataset.details ? JSON.parse(selectedOption.dataset.details) : null;
+
+        if (gpuDetailsData) {
+            console.log(gpuDetailsData);
+            gpuDetails.model.textContent = gpuDetailsData.Model || 'N/A';
+            gpuDetails.vendor.textContent = gpuDetailsData.Vendor || 'N/A';
+            gpuDetails.identifier.textContent = gpuDetailsData.identifier || 'N/A';
+
+            let size = '';
+            if (gpuDetailsData['Memory Size (GiB)'] !== undefined) size = gpuDetailsData['Memory Size (GiB)'] + ' Gb';
+            else if (gpuDetailsData['Memory Size (GB)'] !== undefined) size = gpuDetailsData['Memory Size (GB)'] + ' Gb';
+            else {
+                if (gpuDetailsData['Memory Size (MiB)'] !== undefined) size = gpuDetailsData['Memory Size (MiB)'] + ' Mb';
+                else if (gpuDetailsData['Memory Size (MB)'] !== undefined) size = gpuDetailsData['Memory Size (MB)'] + ' Mb';
+                else size = 'N/A';
+            }
+            gpuDetails.memorySize.textContent = size;
+            gpuDetails.memoryType.textContent = gpuDetailsData['Memory Bus type'] || 'N/A';
+            gpuDetails.busInterface.textContent = gpuDetailsData['Bus interface'] || 'N/A';
+            gpuDetails.tdp.textContent = gpuDetailsData['TDP (Watts)'] || 'N/A';
+        } else {
+            Object.values(gpuDetails).forEach(detail => (detail.textContent = 'N/A'));
+        }
+    });
+
+    searchButton.addEventListener('click', async () => {
+        const searchQuery = gpuSelect.value;
+
+        if (searchQuery === null || searchQuery === '') {
+            alert('Please enter a search term.');
+            return;
+        }
+
+        await addRecentGpu(searchQuery);
+
+        try {
+            const response = await fetch(`/api/search/${encodeURIComponent(searchQuery)}`);
+            const datas = await response.json();
+            const data = datas.products;
+            const resultsContainer = document.getElementById('search-amazon');
+            resultsContainer.innerHTML = '';
+
+            if (data && data.length > 0) {
+                data.forEach(product => {
+                    if(product.product_price === null) return;
+                    const productCard = `
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card">
+                                <img src="${product.product_photo}" class="card-img-top" alt="${product.product_title}">
+                                <div class="card-body">
+                                    <h5 class="card-title">${product.product_title}</h5>
+                                    <hr>
+                                    <div class="d-flex justify-content-between">
+                                        <h5 class="card-text">Price: ${product.product_price}</h5>
+                                        <p class="card-text">Rating: ${product.product_star_rating} (${product.product_num_ratings})</p>
+                                    </div>
+                                </div>
+                                <div class="card-footer d-flex justify-content-between">
+                                    <a href="${product.product_url}" target="_blank" class="btn btn-secondary">Read More</a>
+                                    <form action="/add-gpu" method="POST">
+                                        <button type="submit" class="btn btn-primary">Add to Favorite</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    resultsContainer.innerHTML += productCard;
+                });
+            } else {
+                resultsContainer.innerHTML = '<div class="col-12"><p>No products found.</p></div>';
+            }
+        } catch (error) {
+            console.error('Error fetching search results:', error);
+            alert('Failed to fetch search results. Please try again.');
+        }
+    });
+
+    gpuRecentButton.addEventListener('click', async () => {
+        const searchQuery = gpuSelect.value;
+
+        if (searchQuery === null || searchQuery === '') {
+            alert('Please enter a search term.');
+            return;
+        }
+
+
+        try {
+            const resp = await fetch(`/api/gpus/${encodeURIComponent(searchQuery)}`);
+            const dataGpu = await resp.json();
+
+            const respon = await fetch('/add-gpu', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(dataGpu),
+            });
+
+            if (!respon.ok) {
+                console.error('Failed to add GPU to recent history.');
+            }
+
+            gpuSelect.value = dataGpu.Model;
+            gpuSelect.textContent = `${dataGpu.Model} - ${dataGpu.identifier}`;
+
+            addDetailsGpu(dataGpu);
+
+            const response = await fetch(`/api/search/${encodeURIComponent(searchQuery)}`);
+            const datas = await response.json();
+            const data = datas.products;
+            const resultsContainer = document.getElementById('search-amazon');
+            resultsContainer.innerHTML = '';
+
+            if (data && data.length > 0) {
+                data.forEach(product => {
+                    if(product.product_price === null) return;
+                    const productCard = `
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card">
+                                <img src="${product.product_photo}" class="card-img-top" alt="${product.product_title}">
+                                <div class="card-body">
+                                    <h5 class="card-title">${product.product_title}</h5>
+                                    <hr>
+                                    <div class="d-flex justify-content-between">
+                                        <h5 class="card-text">Price: ${product.product_price}</h5>
+                                        <p class="card-text">Rating: ${product.product_star_rating} (${product.product_num_ratings})</p>
+                                    </div>
+                                </div>
+                                <div class="card-footer d-flex justify-content-between">
+                                    <a href="${product.product_url}" target="_blank" class="btn btn-secondary">Read More</a>
+                                    <form action="/add-gpu" method="POST">
+                                        <button type="submit" class="btn btn-primary">Add to Favorite</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    resultsContainer.innerHTML += productCard;
+                });
+            } else {
+                resultsContainer.innerHTML = '<div class="col-12"><p>No products found.</p></div>';
+            }
+
+        } catch (error) {}
+    });
+
+    async function addRecentGpu(gpuDetails) {
+
+    }
+
+    function addDetailsGpu(gpu) {
+        gpuDetails.model.textContent = gpu.Model || 'N/A';
+        gpuDetails.vendor.textContent = gpu.Vendor || 'N/A';
+        gpuDetails.identifier.textContent = gpu.identifier || 'N/A';
+
+        let size = '';
+        if (gpu['Memory Size (GiB)'] !== undefined) size = gpu['Memory Size (GiB)'] + ' Gb';
+        else if (gpu['Memory Size (GB)'] !== undefined) size = gpu['Memory Size (GB)'] + ' Gb';
+        else {
+            if (gpu['Memory Size (MiB)'] !== undefined) size = gpu['Memory Size (MiB)'] + ' Mb';
+            else if (gpu['Memory Size (MB)'] !== undefined) size = gpu['Memory Size (MB)'] + ' Mb';
+            else size = 'N/A';
+        }
+        gpuDetails.memorySize.textContent = size;
+        gpuDetails.memoryType.textContent = gpu['Memory Bus type'] || 'N/A';
+        gpuDetails.busInterface.textContent = gpu['Bus interface'] || 'N/A';
+        gpuDetails.tdp.textContent = gpu['TDP (Watts)'] || 'N/A';
+    }
+</script>
+</body>
+</html>
