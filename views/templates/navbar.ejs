@@ -1,6 +1,41 @@
 <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const savedLang = localStorage.getItem("selectedLanguage") || "en";
+        if (savedLang !== "en") {
+            document.body.style.display = 'none';
+            translatePage("en", savedLang);
+        }
+    });
+
+    function setLanguage(targetLang) {
+        localStorage.setItem("selectedLanguage", targetLang);
+        location.reload();
+    }
+
+    async function translateText2(text) {
+        const targetLang = localStorage.getItem("selectedLanguage")
+        console.log(targetLang);
+
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            return data[0].map(item => item[0]).join(""); // Extract translated text
+        } catch (error) {
+            console.error("Error fetching translation:", error);
+            return text; // Return original text if error occurs
+        }
+    }
+
+
     async function translatePage(sourceLang, targetLang) {
-        const elements = document.querySelectorAll("body, body *:not(script):not(style):not(iframe):not(noscript)");
+        if (targetLang === "en") {
+            document.body.style.display = "block";
+            return;
+        }
+
+        const elements = document.querySelectorAll("body, body *:not(script):not(style):not(iframe):not(noscript):not([data-no-translate])");
 
         for (let element of elements) {
             if (element.childNodes.length === 1 && element.childNodes[0].nodeType === Node.TEXT_NODE) {
@@ -15,11 +50,12 @@
                 }
             }
         }
+
+        document.body.style.display = "block";
     }
 
     async function translateText(text, sourceLang, targetLang) {
         const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
-
         try {
             const response = await fetch(url);
             const data = await response.json();
@@ -41,12 +77,14 @@
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Language
                         </a>
-                        <ul class="dropdown-menu" id="languages">
-                            <li><a class="dropdown-item" href="#" onclick="translatePage('en', 'es')">Spanish</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="translatePage('en', 'fr')">French</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="translatePage('en', 'de')">German</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="translatePage('en', 'it')">Italian</a></li>
-                        </ul>
+                    <ul class="dropdown-menu" id="languages">
+                        <li><a class="dropdown-item" href="#" onclick="setLanguage('en')">English</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="setLanguage('es')">Spanish</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="setLanguage('fr')">French</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="setLanguage('de')">German</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="setLanguage('it')">Italian</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="setLanguage('ru')">Russian</a></li>
+                    </ul>
                     </li>
                     <% if (isLoggedIn) { %>
                         <a class="nav-link" href="/profile"><img src="https://eu.ui-avatars.com/api/?name=<%= username %>&size=250" style="height: 40px; width: 40px" class="rounded-circle" alt="Profile Picture" /></a>

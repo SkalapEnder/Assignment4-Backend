@@ -20,7 +20,7 @@ router.get('/news', async (req, res) => {
     const startIndex = (page - 1) * pageSize;
     const endIndex = startIndex + pageSize;
 
-    const queries = ['Star', 'Galaxy', 'NASA', 'Space', 'SpaceX', 'Planet', 'Astronomy', 'Spaceship', 'Satellite'];
+    const queries = ['NVIDIA', 'AMD', 'GPU', 'RTX', 'GTX', 'INTEL', 'PC'];
 
     try {
         // If array is empty or 1-2 days was passed

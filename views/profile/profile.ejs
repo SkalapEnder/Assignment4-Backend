@@ -20,15 +20,26 @@
         <img src="https://eu.ui-avatars.com/api/?name=<%= user.username %>&size=150" class="rounded-circle" alt="Profile Picture" />
     </div>
 
-    <div class="justify-content-center mt-4 row">
-        <div class="col-lg-6 col-md-12 col-sm-12 mt-4">
-            <h3>ID: <%= user.user_id %></h3>
-            <h3>Name: <%= user.username %></h3>
-            <h3>Email: <%= user.email %></h3>
-            <h3>Role: <%= capitalizeFirstLetter(user.role) %></h3>
+    <div class="mt-4">
+        <div class="mt-4">
+            <div class="d-flex">
+                <h3>ID: <span data-no-translate><%= user.user_id %></span></h3>
+            </div>
+
+            <div class="d-flex">
+                <h3 class="me-2">Name: </h3> <h3><span data-no-translate><%= user.username %></span></h3>
+            </div>
+
+            <div class="d-flex">
+                <h3 class="me-2">Email: </h3><h3><span data-no-translate><%= user.email %></span></h3>
+            </div>
+
+            <div class="d-flex">
+                <h3 class="me-2">Role:</h3><h3> <span data-no-translate><%= capitalizeFirstLetter(user.role) %></span></h3>
+            </div>
         </div>
-        <br>
-        <div class="col-lg-6 col-md-12 col-sm-12 mt-4">
+
+        <div class="mt-4">
             <h3>Profile data info</h3>
             <h4>Created: <%= convertData(user.createdAt) %></h4>
             <h4>Updated: <%= convertData(user.updatedAt) %></h4>

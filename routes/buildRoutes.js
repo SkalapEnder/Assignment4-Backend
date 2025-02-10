@@ -30,6 +30,8 @@ router.get('/build', async (req, res) => {
     }
 });
 
+
+// API PART
 router.get('/api/gpus', async (req, res) => {
     const search = req.query.search; // User's input
     const apiUrl = 'https://raw.githubusercontent.com/voidful/gpu-info-api/gpu-data/gpu.json';

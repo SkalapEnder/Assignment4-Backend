@@ -9,7 +9,7 @@ const { body, validationResult } = require('express-validator');
 const crypto = require('crypto');
 require('dotenv').config();
 const router = express.Router();
-const adminCode = 'admin1243'
+const adminCode = process.env.ADMIN_KEY;
 
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('Auth: Connected to MongoDB Atlas'))
@@ -20,9 +20,7 @@ const isAuthenticated = (req, res, next) => {
     res.redirect('/login');
 };
 
-const mailerSend = new MailerSend({
-    apiKey: process.env.MAIL_API_KEY,
-});
+const mailerSend = new MailerSend({apiKey: process.env.MAIL_API_KEY,});
 
 const sendEmail = async (to, subject, html) => {
     try {
@@ -72,6 +70,8 @@ passport.deserializeUser(async (id, done) => {
     }
 });
 
+
+
 // REGISTER part
 router.get('/register', (req, res) => res.render('auth/registration', {role: 'user'}));
 
@@ -89,9 +89,9 @@ router.post('/register', [
     }
     const { username, email, password, role, secretCode } = req.body;
 
-    const existingUser = await User.findOne({ username: username });
+    const existingUser = await User.findOne({ email: email });
     if (existingUser !== null) {
-        return res.render('templates/error', { errorMessage: 'User already exists' });
+        return res.render('templates/error', { errorMessage: 'User with this email already exists' });
     }
 
     if (role === 'admin' && secretCode !== adminCode) {
@@ -120,50 +120,7 @@ router.post('/register', [
     res.redirect('/login');
 });
 
-router.post('/register/admin', [
-  body('email').isEmail().withMessage('Invalid email address'),
-  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
-    .matches(/[A-Z]/).withMessage('Password must contain an uppercase letter')
-    .matches(/[a-z]/).withMessage('Password must contain a lowercase letter')
-    .matches(/[0-9]/).withMessage('Password must contain a number')
-    .matches(/[@$!%*?&]/).withMessage('Password must contain a special character')],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errorMessage: errors.array()[0]['msg'] });
-    }
-    const { username, email, password, role, secretCode } = req.body;
 
-    const existingUser = await User.findOne({ username: username });
-    if (existingUser !== null) {
-        return res.status(400).json({ errorMessage: 'User already exists' });
-    }
-
-    if (role === 'admin' && secretCode !== adminCode) {
-        return res.status(400).json({ errorMessage: 'Invalid secret code' });
-    }
-
-    // Find new free ID from collection (starts from 0)
-    const userId = await getNextFreeUserId();
-    if (isNaN(userId)) {
-        throw new Error('Failed to generate a valid user_id');
-    }
-
-    const newUser = new User({
-        user_id: userId,
-        username: username,
-        email: email,
-        password: password,
-        role: role,
-        history_news: [],
-        history_gpus: [],
-        created_at: new Date(),
-        updated_at: new Date(),
-    });
-
-    await newUser.save();
-    res.redirect('/admin');
-});
 
 // LOGIN part
 router.get('/login', (req, res) => res.render('auth/login'));
@@ -175,7 +132,7 @@ router.post('/login', (req, res, next) => {
         }
 
         if (!user) {
-            return res.status(400).json({ errorMessage: 'User not found' });
+            return res.status(400).json({ errorMessage: 'Invalid email or password' });
         }
         req.logIn(user, (err) => {
             if (err) return next(err);
@@ -188,6 +145,8 @@ router.post('/login', (req, res, next) => {
         });
     })(req, res, next);
 });
+
+
 
 // UPDATE part
 router.get('/update', isAuthenticated, async (req, res) => {
@@ -207,8 +166,8 @@ router.get('/update/:id', isAuthenticated, async (req, res) => {
 })
 
 router.post('/update', isAuthenticated, [
-    body('email').isEmail().withMessage('Invalid email address'),
-], async (req, res) => {
+    body('email').isEmail().withMessage('Invalid email address'),],
+    async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errorMessage: errors.array()[0]['msg'] });
@@ -246,12 +205,9 @@ router.post('/update', isAuthenticated, [
     }
 });
 
-// USER part
-router.get('/admin', isAuthenticated, async (req, res) => {
-    const users = await User.find({});
-    res.render('profile/admin', {users});
-})
 
+
+// USER part
 router.get('/profile', isAuthenticated, async (req, res) => {
     const user = await getUser(req.session.userId);
     if (user === null) {
@@ -259,6 +215,94 @@ router.get('/profile', isAuthenticated, async (req, res) => {
     }
     return res.render('profile/profile', {user});
 })
+
+
+
+// RESET PASSWORD PART
+router.get('/password-reset', (req, res) => res.render('reset/reset_password'));
+
+router.post('/password-reset', [
+    body('email').isEmail().withMessage('Invalid email address')],
+    async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errorMessage: errors.array()[0]['msg'] });
+    }
+
+    const email = req.body.email;
+
+    if (email === undefined) return res.status(400).json({ errorMessage: "Email is required" });
+
+    const user = await User.findOne({ email: email });
+    if (user === null) return res.status(400).json({ errorMessage: "No account with that email exists." });
+
+    // Generate a secure token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    user.resetToken = resetToken;
+    user.tokenExpiry = Date.now() + 3600000;
+    await user.save();
+
+
+    const resetLink = `${process.env.BASE_URL}/password-reset/${resetToken}`;
+
+    // Email template
+    const emailHtml = `
+        <h3>Password Reset Request</h3>
+        <p>You requested to reset your password. Click the link below:</p>
+        <a href="${resetLink}">${resetLink}</a>
+        <p>If you didn't request this, ignore this email.</p>
+    `;
+
+    const response = await sendEmail(email, "Password Reset Request", emailHtml);
+    if(!response) return res.status(500).json({errorMessage: 'Error sending message to email'});
+    res.status(200).json({message: 'The request sent to your email.'});
+});
+
+
+router.get('/password-reset/:token', async (req, res) => {
+    const user = await User.findOne({
+        resetToken: req.params.token,
+        tokenExpiry: { $gt: Date.now() }
+    });
+
+    if (user === null) {
+        return res.render('templates/error', { errorMessage: 'Link are not actual!'});
+    }
+
+    res.render('reset/reset_password_form', { token: req.params.token});
+});
+
+router.post('/password-reset/:token', [
+    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+        .matches(/[A-Z]/).withMessage('Password must contain an uppercase letter')
+        .matches(/[a-z]/).withMessage('Password must contain a lowercase letter')
+        .matches(/[0-9]/).withMessage('Password must contain a number')
+        .matches(/[@$!%*?&]/).withMessage('Password must contain a special character')
+],
+    async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errorMessage: errors.array()[0]['msg'] });
+    }
+
+    const { password } = req.body;
+    const user = await User.findOne({
+        resetToken: req.params.token,
+        tokenExpiry: { $gt: Date.now() }
+    });
+
+    if (user === null) return res.status(400).json({ errorMessage: "Token is invalid or expired." });
+
+    user.password = password;
+    user.resetToken = undefined;
+    user.tokenExpiry = undefined;
+    await user.save();
+    res.redirect('/reset-success')
+});
+
+router.get('/reset-success', (req, res) => res.render('reset/reset_password_success'))
+
+
 
 // LOG OUT part
 router.get('/logout', (req, res) => {
@@ -286,6 +330,59 @@ router.get('/delete-account', isAuthenticated, async (req, res) => {
     }
 });
 
+
+
+// ADMIN PART
+router.post('/register/admin', [
+        body('email').isEmail().withMessage('Invalid email address'),
+        body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+            .matches(/[A-Z]/).withMessage('Password must contain an uppercase letter')
+            .matches(/[a-z]/).withMessage('Password must contain a lowercase letter')
+            .matches(/[0-9]/).withMessage('Password must contain a number')
+            .matches(/[@$!%*?&]/).withMessage('Password must contain a special character')],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errorMessage: errors.array()[0]['msg'] });
+        }
+        const { username, email, password, role, secretCode } = req.body;
+
+        const existingUser = await User.findOne({ username: username });
+        if (existingUser !== null) {
+            return res.status(400).json({ errorMessage: 'User already exists' });
+        }
+
+        if (role === 'admin' && secretCode !== adminCode) {
+            return res.status(400).json({ errorMessage: 'Invalid secret code' });
+        }
+
+        // Find new free ID from collection (starts from 0)
+        const userId = await getNextFreeUserId();
+        if (isNaN(userId)) {
+            throw new Error('Failed to generate a valid user_id');
+        }
+
+        const newUser = new User({
+            user_id: userId,
+            username: username,
+            email: email,
+            password: password,
+            role: role,
+            favorite_news: [],
+            history_planets: [],
+            created_at: new Date(),
+            updated_at: new Date(),
+        });
+
+        await newUser.save();
+        res.redirect('/admin');
+    });
+
+router.get('/admin', isAuthenticated, async (req, res) => {
+    const users = await User.find({});
+    res.render('profile/admin', {users});
+})
+
 router.get('/delete-account/:id', isAuthenticated, async (req, res) => {
     const userId = Number(req.params.id);
 
@@ -300,6 +397,8 @@ router.get('/delete-account/:id', isAuthenticated, async (req, res) => {
         return res.render('templates/error', {errorMessage: err});
     }
 });
+
+
 
 // Helpers
 async function getUser(id){

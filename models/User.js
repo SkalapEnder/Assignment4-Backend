@@ -11,9 +11,9 @@ const userSchema = new mongoose.Schema({
             message: 'user_id must be an integer',
         },
     },
-    username: { type: String, required: true, unique: true },
+    username: { type: String, required: true },
     password: { type: String, required: true },
-    email: { type: String, required: true},
+    email: { type: String, required: true, unique: true },
     role: { type: String, enum: ['admin', 'user'], required: true },
 
     favorite_news: {
@@ -35,14 +35,14 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {
-    // if (this.isModified('password')) {
-    //     this.password = await bcrypt.hash(this.password, 10);
-    // }
+    if (this.isModified('password')) {
+        this.password = await bcrypt.hash(this.password, 10);
+    }
     next();
 });
 
 userSchema.methods.comparePassword = async function (password) {
-    password = await bcrypt.hash(password, 11);
+    password = await bcrypt.hash(password, 10);
     return bcrypt.compare(password, this.password);
 };
 

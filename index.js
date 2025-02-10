@@ -5,12 +5,13 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const passport = require('passport');
 const flash = require('connect-flash');
-const path = require('path');
 const authRouter = require('./routes/authRoutes');
 const newsRouter = require('./routes/newsRoutes');
 const buildRouter = require('./routes/buildRoutes');
 const itemRouter = require('./routes/itemRoutes');
 const Item = require('./models/Item');
+const axios = require('axios');
+const NASA_API_KEY = process.env.NASA_API_KEY;
 const app = express();
 const PORT = 3000;
 
@@ -24,7 +25,6 @@ app.set('views', './views');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static('public'));
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Session middleware
 app.use(session({
@@ -47,9 +47,12 @@ app.use((req, res, next) => {
 app.use('/', authRouter);
 app.use('/', newsRouter);
 app.use('/', buildRouter);
-app.use('/', itemRouter)
+app.use('/items', itemRouter)
 
-app.get('/', async (req, res) => res.render("index"))
+app.get('/', async (req, res) => {
+    const photo = await getPlanetPhotoOfDay();
+    res.render("index", {photo})
+})
 
 // Start the server
 app.listen(PORT, () => {
@@ -71,6 +74,30 @@ function convertData(timestamp) {
 function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
+
+async function getPlanetPhotoOfDay() {
+    try {
+        const response = await axios.get(`https://api.nasa.gov/planetary/apod?api_key=${NASA_API_KEY}`);
+        const data = await response.data;
+
+        if (data['media_type'] === 'image') {
+            console.log(data['url']);
+            return {
+                success: true,
+                title: data.title,
+                description: data['explanation'],
+                imageUrl: data['url'],
+                date: data.date
+            };
+        } else {
+            return { success: false, error: 'Today’s APOD is not an image, it might be a video or another media type.' };
+        }
+    } catch (error) {
+        console.error('Error fetching APOD:', error.message);
+        return { success: false, error: 'Failed to retrieve the planet photo of the day' };
+    }
+}
+
 
 app.locals.convertData = convertData;
 app.locals.capitalizeFirstLetter = capitalizeFirstLetter;

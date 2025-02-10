@@ -38,15 +38,31 @@
             <label for="password2" class="fs-6">Write Password again</label>
         </div>
 
-        <button class="btn btn-outline-success fs-4" id="signUp">Sign Up</button>
+        <div class="form-floating w-50 mx-auto">
+            <select id="role" name="role" class="form-select" required onchange="toggleSecretCode()">
+                <option value="user">Visitor</option>
+                <option value="admin">Admin</option>
+            </select>
+            <label for="role">Choose role</label>
+        </div>
+
+        <div id="secretCodeDiv" style="display: none;" class="form-floating mb-4 mt-2 w-50  mx-auto">
+            <input type="password" class="form-control my-3" id="secretCode" name="secretCode">
+            <label for="secretCode" class="fs-6">Secret Code</label>
+        </div>
+
+        <button class="btn btn-outline-success fs-4 mt-3" id="signUp">Sign Up</button>
     </div>
     <br>
-    <a href="/login" class="link-offset-2 link-underline link-underline-opacity-0 fs-4">Have already account?</a>
+    <a href="/login" class="link-offset-2 link-underline link-underline-opacity-0 fs-4 fw-bold">Are you have already account?</a>
 
     <div id="error" style="color: red; display: none" class="alert alert-danger mt-2" role="alert">
 
     </div>
 
+    <div id="success"  style="display: none" class="alert alert-success mt-2" role="alert">
+
+    </div>
 </div>
 
 <%- include('../templates/footer'); %>
@@ -60,25 +76,29 @@
         const password = document.getElementById('password').value;
         const password2 = document.getElementById('password2').value;
         const email = document.getElementById('email').value;
+        const role = document.getElementById('role').value || 'user';
+        const secretCode = document.getElementById('secretCode').value;
 
         if(username === '' || email === '' || password === '') {
-            outputError('Please, fill out the fields');
-            console.log('Data:', username, email, password)
+            await outputErrorMsg('Please, fill out the fields');
+            return;
+        }
+
+        if(role === 'admin' && secretCode === ''){
+            await outputErrorMsg('Please, fill out the fields');
             return;
         }
 
         if(password !== password2) {
-            outputError('Passwords do not match');
+            await outputErrorMsg('Passwords do not match');
             return;
         }
 
         try {
             const response = await fetch('/register', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username, email, password }),
+                headers: { 'Content-Type': 'application/json', },
+                body: JSON.stringify({ username, email, password, role, secretCode }),
                 credentials: 'include'
             });
 
@@ -86,17 +106,38 @@
                 window.location.href = response.url;
             } else if (!response.ok) {
                 const data = await response.json();
-                outputError(data.errorMessage || 'Registration failed')
+                await outputErrorMsg(data.errorMessage || 'Login failed')
             }
         } catch (error) {
-            outputError('An error occurred:', error);
+            await outputErrorMsg("Error: " + error);
         }
     });
+
+    function removeError() {
+        error.style.display = 'none';
+    }
+
+    async function outputErrorMsg(msg) {
+        const message = await translateText2(msg);
+        outputError(message);
+    }
 
     function outputError(message){
         error.style.display = 'block';
         error.innerHTML = `<p>${message}</p>`;
-        setTimeout(error.style.display = 'block', 15000);
     }
+
+    function toggleSecretCode() {
+        const roleSelect = document.getElementById('role');
+        const secretCodeDiv = document.getElementById('secretCodeDiv');
+
+        if (roleSelect.value === 'admin') {
+            secretCodeDiv.style.display = 'block';
+        } else {
+            secretCodeDiv.style.display = 'none';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', toggleSecretCode);
 </script>
 </html>

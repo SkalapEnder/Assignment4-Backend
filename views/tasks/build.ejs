@@ -32,7 +32,7 @@
     <h1 class="text-center mb-4">GPU select</h1>
 
     <div id="gpus-recent" class="mb-4">
-        <h3>Recent GPUs</h3>
+        <h3 class="text-center">Recent GPUs</h3>
         <div class="d-flex overflow-auto">
             <% if (products_recent && products_recent.length > 0) { %>
                 <% products_recent.forEach(product => { %>
@@ -49,11 +49,11 @@
                     </div>
                 <% }); %>
             <% } else { %>
-                <p>No recently viewed GPUs.</p>
+                <p class="text-center">No recently viewed GPUs.</p>
             <% } %>
         </div>
     </div>
-
+    <hr>
     <div class="d-flex justify-content-around ">
         <!-- GPU part -->
         <div style="width: 50%;">
@@ -116,7 +116,7 @@
         if (userInput.length > 0) {
             try {
                 const response = await fetch(`/api/gpus?search=${encodeURIComponent(userInput)}`);
-                if (!response.ok) throw new Error('Failed to fetch GPU data');
+                if (!response.ok) { alert('Failed to fetch GPU data'); return; }
 
                 const gpus = await response.json();
 

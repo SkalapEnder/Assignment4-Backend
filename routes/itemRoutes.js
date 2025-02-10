@@ -3,14 +3,13 @@ const multer = require("multer");
 const Item = require("../models/Item");
 const router = express.Router();
 
-
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, "uploads/"),
     filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
 });
 const upload = multer({ storage });
 
-// CREATE Item (Admin only)
+// CREATE
 router.post("/add", upload.array("images", 3), async (req, res) => {
     try {
         const { nameEn, nameOther, descEn, descOther } = req.body;
@@ -33,7 +32,7 @@ router.post("/add", upload.array("images", 3), async (req, res) => {
     }
 });
 
-// READ All Items
+// READ
 router.get("/", async (req, res) => {
     try {
         const items = await Item.find();
@@ -43,7 +42,7 @@ router.get("/", async (req, res) => {
     }
 });
 
-// UPDATE Item (Admin only)
+// UPDATE
 router.put("/edit/:id", upload.array("images", 3), async (req, res) => {
     try {
         const { nameEn, nameOther, descEn, descOther } = req.body;
@@ -66,7 +65,7 @@ router.put("/edit/:id", upload.array("images", 3), async (req, res) => {
     }
 });
 
-// DELETE Item (Admin only)
+// DELETE
 router.delete("/delete/:id", async (req, res) => {
     try {
         const deletedItem = await Item.findByIdAndUpdate(

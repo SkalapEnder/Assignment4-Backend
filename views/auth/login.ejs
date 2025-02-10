@@ -31,7 +31,12 @@
     <a href="/password-reset" class="link-offset-2 link-underline link-underline-opacity-0 fs-4 fw-bold">Forget your password?</a>
     <br><br>
     <a href="/register" class="link-offset-2 link-underline link-underline-opacity-0 fs-4 fw-bold">Create new account</a>
+
     <div id="error" style="color: red; display: none" class="alert alert-danger mt-2" role="alert">
+
+    </div>
+
+    <div id="success"  style="display: none" class="alert alert-success mt-2" role="alert">
 
     </div>
 
@@ -48,8 +53,7 @@
         const email = document.getElementById('email').value;
 
         if(email === '' || password === '') {
-            outputError('Please, fill out the fields');
-            console.log('Data:', email, password)
+            await outputErrorMsg('Please, fill out the fields');
             return;
         }
 
@@ -63,14 +67,20 @@
 
             if (!response.ok) {
                 const data = await response.json();
-                outputError(data.errorMessage || 'Login failed')
+                const message = data.errorMessage || 'Login failed'
+                await outputErrorMsg(message)
             } else if (response.redirected)  {
                 window.location.href = response.url;
             }
         } catch (error) {
-            outputError('An error occurred: ' + error);
+            await outputErrorMsg('An error occurred: ' + error);
         }
     })
+
+    async function outputErrorMsg(msg) {
+        const message = await translateText2(msg);
+        outputError(message);
+    }
 
     function outputError(message){
         error.style.display = 'block';

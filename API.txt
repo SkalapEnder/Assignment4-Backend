@@ -1,1 +1,29 @@
 News: b2486c9f9e994497847a79e02ac4a8f8
+
+<!--    <div class="row">-->
+<!--        <% //items.forEach(item => { %>-->
+<!--            <div class="col-md-6 mb-4">-->
+<!--                <div class="card shadow">-->
+<!--                    <div class="card-body">-->
+<!--                        <h4 class="card-title"><%= //item.name[lang] %></h4>-->
+<!--                        <p class="card-text"><%= //item.description[lang] %></p>-->
+<!--                    </div>-->
+<!--                    <div id="carousel-<%= //item._id %>" class="carousel slide" data-bs-ride="carousel">-->
+<!--                        <div class="carousel-inner">-->
+<!--                            <% //item.images.forEach((img, index) => { %>-->
+<!--                                <div class="carousel-item <%=// index === 0 ? 'active' : '' %>">-->
+<!--                                    <img src="/<%= img %>" class="d-block w-100" alt="Item Image">-->
+<!--                                </div>-->
+<!--                            <% }); %>-->
+<!--                        </div>-->
+<!--                        <button class="carousel-control-prev" type="button" data-bs-target="#carousel-<%= item._id %>" data-bs-slide="prev">-->
+<!--                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>-->
+<!--                        </button>-->
+<!--                        <button class="carousel-control-next" type="button" data-bs-target="#carousel-<%= item._id %>" data-bs-slide="next">-->
+<!--                            <span class="carousel-control-next-icon" aria-hidden="true"></span>-->
+<!--                        </button>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        <%// }); %>-->
+<!--    </div>-->
