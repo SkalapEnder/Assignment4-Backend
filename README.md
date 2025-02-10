@@ -27,6 +27,17 @@ First of all, you need to create account.
 
 #### 4) After Registration, you will move to log in. Again, write your username and password.
 
+### GPU Part
+
+There you can search GPUs from dataset and Amazon
+
+#### 1) Type your GPU
+
+#### 2) Choose one.
+
+#### 3) Click search to find in Amazon.
+
+
 ### News Part
 
 On each card of news, you have 2 buttons:
