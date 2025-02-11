@@ -45,7 +45,7 @@ router.get('/api/search/:gpu', async (req, res) => {
             product_condition: 'NEW',
         },
         headers: {
-            'x-rapidapi-key': '6c6625f883msh2274802339f753fp17f542jsnbd5531f0fdc3',
+            'x-rapidapi-key': 'dfca59b31amshf2fb6536281997dp18b48ejsnf695b2ced82c',
             'x-rapidapi-host': 'real-time-amazon-data.p.rapidapi.com'
         }
     };
