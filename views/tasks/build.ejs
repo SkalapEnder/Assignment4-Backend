@@ -43,9 +43,9 @@
                             <div class="card-body">
                                 <h5 class="card-title"><%= product.gpuModel %></h5>
                                 <h6 class="card-subtitle mb-2 text-muted"><%= convertData(product.createdAt) %></h6>
+                                <p class="card-text"><% product.gpuIdentifier %></p>
                             </div>
                             <div class="card-footer d-flex justify-content-around">
-                                <input type="hidden" class="recent-gpu" id="gpu-<%= product.gpuIdentifier %>" value="<%= product.gpuIdentifier %>">
                                 <button class="btn btn-outline-primary fs-4" onclick="findRecent('<%= product.gpuIdentifier%>')">Find</button>
                             </div>
                         </div>
@@ -162,28 +162,37 @@
     });
 
     async function fetchGPUData(searchQuery) {
-        const resp = await fetch(`/api/gpus/${encodeURIComponent(searchQuery)}`);
+        const resp = await fetch(`/api/gpus/specific`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ search: searchQuery })
+        });
         if (!resp.ok) throw new Error("GPU not found");
-        return await resp.json();
+        const data = await resp.json();
+        return data;
     }
 
     async function addGPUToRecent(gpu) {
-        console.log('gpu')
-        console.log(gpu.Model)
         const response = await fetch(`/add-gpu`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ gpuModel: gpu.Model, gpuIdentifier: gpu.identifier }),
         });
 
-        if (!response.ok) throw new Error("Failed to add recent GPU");
+        if (response.status > 299) throw new Error("Failed to add recent GPU");
     }
 
     async function fetchSearchResults(searchQuery) {
-        const response = await fetch(`/api/search/${encodeURIComponent(searchQuery)}`);
-        if (!response.ok) throw new Error("Error fetching search results");
-        const datas = await response.json();
-        return datas?.products || [];
+        try {
+            const response = await fetch(`/api/search/${encodeURIComponent(searchQuery)}`);
+            if (response.status === 429) return null;
+            if (!response.ok) throw new Error("Error fetching search results");
+            const datas = await response.json();
+            return datas.products || [];
+        } catch (error) {
+            console.error('Error search:' + error);
+            return [];
+        }
     }
 
     function renderProducts(data, container) {
@@ -223,7 +232,6 @@
 
     searchButton.addEventListener("click", async () => {
         const searchQuery = gpuSelect.value;
-        console.log(searchQuery);
         if (searchQuery === null) {
             alert("Please enter a search term.");
             return;
@@ -232,10 +240,12 @@
         try {
             const gpu = await fetchGPUData(searchQuery);
             await addGPUToRecent(gpu.gpu);
+            addDetailsGpu(gpu.gpu);
 
-            const data = await fetchSearchResults(searchQuery);
-            const resultsContainer = document.getElementById("search-amazon");
-            renderProducts(data, resultsContainer);
+            //const data = await fetchSearchResults(searchQuery);
+            //if (data === null) { alert('Exceeded limit of send request to Amazon'); return; }
+            //const resultsContainer = document.getElementById('search-amazon');
+            //renderProducts(data, resultsContainer);
         } catch (error) {
             console.error("Error:", error);
             alert(error.message);
@@ -250,8 +260,9 @@
 
         try {
             const dataGpu = await fetchGPUData(searchQuery);
-            console.log('GPU', dataGpu)
-            await addGPUToRecent(dataGpu);
+
+            await addGPUToRecent(dataGpu.gpu);
+            addDetailsGpu(dataGpu.gpu);
 
             const option = document.createElement('option');
             option.value = dataGpu.gpu.Model;
@@ -259,13 +270,14 @@
             gpuSelect.appendChild(option);
             gpuSelect.value = dataGpu.gpu.Model;
 
-            addDetailsGpu(dataGpu);
 
-            const data = await fetchSearchResults(searchQuery);
-            const resultsContainer = document.getElementById('search-amazon');
-            renderProducts(data, resultsContainer);
+
+            //const data = await fetchSearchResults(searchQuery);
+            //if (data === null) { alert('Exceeded limit of send request to Amazon'); return; }
+            //const resultsContainer = document.getElementById('search-amazon');
+            //renderProducts(data, resultsContainer);
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error:' + error);
             alert('An error occurred: ' + error);
         }
     }

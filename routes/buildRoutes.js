@@ -16,8 +16,8 @@ const isAuthenticated = (req, res, next) => {
 router.get('/build', isAuthenticated, async (req, res) => {
     try {
         const user = await User.findOne({ user_id: req.session.userId });
-        const products_recent = user? user.history_gpus : [] ;
-        console.log(products_recent);
+        const products_recent = user !== null ? user.history_gpus : [] ;
+
         res.render('tasks/build', {
             products: [],
             products_recent: products_recent,
@@ -52,8 +52,8 @@ router.get('/api/search/:gpu', async (req, res) => {
 
     try {
         const response = await axios.request(options);
+        if(response.status === 429) res.json({products: []});
         const products = response.data.data.products;
-
         res.json({ products: products });
     } catch (error) {
         console.error(error);
@@ -103,26 +103,44 @@ router.get('/api/gpus/:gpu', async (req, res) => {
     }
 });
 
-router.post('/add-gpu', async (req, res) => {
+router.post('/api/gpus/specific', async (req, res) => {
     try {
-        const { gpuModel, gpuIdentifier } = req.body;
-        const userId = req.session.userId;
+        const { search } = req.body;
+        const apiUrl = 'https://raw.githubusercontent.com/voidful/gpu-info-api/gpu-data/gpu.json';
+        const response = await axios.get(apiUrl);
+        const allGPUs = response.data;
 
-        if (!userId) {
-            return res.render('templates/error', {errorMessage: 'Unauthorized' });
+        const filteredGPUs = Object.entries(allGPUs)
+            .filter(([key, value]) => key.toLowerCase().includes(search.toLowerCase()))
+            .map(([key, value]) => ({ identifier: key, ...value }));
+
+        if (filteredGPUs.length === 0) {
+            return res.status(400).json({errorMessage: 'GPU not found' });
         }
 
-        const user = await User.findOne({ _id: userId });
-        if (!user) {
-            return res.render('templates/error', {errorMessage: 'User not found' });
+        res.json({ gpu: filteredGPUs[0] });
+    } catch (error) {
+        console.error('Error fetching GPU data:', error);
+        return res.render('templates/error', {errorMessage: 'Failed to fetch GPU data' });
+    }
+});
+
+router.post('/add-gpu', isAuthenticated, async (req, res) => {
+    try {
+        const { gpuModel, gpuIdentifier } = req.body;
+
+        const user = await User.findOne({ user_id: req.session.userId });
+        if (user === null) {
+            return res.status(400).json({errorMessage: 'User does not exist'});
         }
 
         if (user.history_gpus.length >= 5) {
             user.history_gpus.shift();
         }
 
-        user.history_gpus.push({ gpuModel, gpuIdentifier: gpuIdentifier || null, createdAt: new Date() });
+        user.history_gpus.push({ gpuModel, gpuIdentifier: gpuIdentifier, createdAt: new Date() });
         await user.save();
+        res.status(200);
     } catch (error) {
         console.error('Error adding GPU:', error);
         return res.render('templates/error', {errorMessage: 'Failed to add GPU' });
