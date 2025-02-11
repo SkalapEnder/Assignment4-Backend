@@ -46,7 +46,7 @@
                                 <p class="card-text"><% product.gpuIdentifier %></p>
                             </div>
                             <div class="card-footer d-flex justify-content-around">
-                                <button class="btn btn-outline-primary fs-4" onclick="findRecent('<%= product.gpuIdentifier%>')">Find</button>
+                                <button class="btn btn-outline-primary fs-4" onclick="findRecent('<%= product.gpuModel%>')">Find</button>
                             </div>
                         </div>
                     </div>
@@ -168,8 +168,7 @@
             body: JSON.stringify({ search: searchQuery })
         });
         if (!resp.ok) throw new Error("GPU not found");
-        const data = await resp.json();
-        return data;
+        return await resp.json();
     }
 
     async function addGPUToRecent(gpu) {
@@ -180,6 +179,17 @@
         });
 
         if (response.status > 299) throw new Error("Failed to add recent GPU");
+    }
+
+    async function addGPUToFavorite(gpuUrl) {
+        const response = await fetch(`/add-gpu-fav`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ gpuUrl: gpuUrl }),
+        });
+
+        return response.status <= 299;
+
     }
 
     async function fetchSearchResults(searchQuery) {
@@ -217,11 +227,6 @@
                             </div>
                             <div class="card-footer d-flex justify-content-between">
                                 <a href="${product.product_url}" target="_blank" class="btn btn-secondary">Read More</a>
-                                <form action="/add-gpu" method="POST">
-                                    <input type="hidden" name="gpuModel" value="${product.product_title}">
-                                    <input type="hidden" name="gpuIdentifier" value="${product.product_url}">
-                                    <button type="submit" class="btn btn-primary">Add to Favorite</button>
-                                </form>
                             </div>
                         </div>
                     </div>
@@ -232,27 +237,33 @@
 
     searchButton.addEventListener("click", async () => {
         const searchQuery = gpuSelect.value;
-        if (searchQuery === null) {
+        if (searchQuery === null || searchQuery === '') {
             alert("Please enter a search term.");
             return;
         }
 
         try {
             const gpu = await fetchGPUData(searchQuery);
-            await addGPUToRecent(gpu.gpu);
-            addDetailsGpu(gpu.gpu);
+            await addGPUToRecent(gpu);
+            addDetailsGpu(gpu);
 
-            //const data = await fetchSearchResults(searchQuery);
-            //if (data === null) { alert('Exceeded limit of send request to Amazon'); return; }
-            //const resultsContainer = document.getElementById('search-amazon');
-            //renderProducts(data, resultsContainer);
+            const data = await fetchSearchResults(searchQuery);
+            if (data === null) { alert('Exceeded limit of send request to Amazon'); return; }
+            const resultsContainer = document.getElementById('search-amazon');
+            renderProducts(data, resultsContainer);
         } catch (error) {
             console.error("Error:", error);
             alert(error.message);
         }
     });
 
+    async function addFavorite(gpuAsin){
+        const response = await addGPUToFavorite(gpuAsin);
+        if(!response) alert('Failed to add favorite');
+    }
+
     async function findRecent(searchQuery) {
+        console.log('Finding...')
         if (searchQuery === null) {
             alert('Please enter a search term.');
             return;
@@ -260,17 +271,14 @@
 
         try {
             const dataGpu = await fetchGPUData(searchQuery);
-
-            await addGPUToRecent(dataGpu.gpu);
-            addDetailsGpu(dataGpu.gpu);
+            await addGPUToRecent(dataGpu);
+            addDetailsGpu(dataGpu);
 
             const option = document.createElement('option');
-            option.value = dataGpu.gpu.Model;
-            option.textContent = `${dataGpu.gpu.Model} - ${dataGpu.gpu.identifier}`;
+            option.value = dataGpu.Model;
+            option.textContent = `${dataGpu.Model} - ${dataGpu.identifier}`;
             gpuSelect.appendChild(option);
-            gpuSelect.value = dataGpu.gpu.Model;
-
-
+            gpuSelect.value = dataGpu.Model;
 
             const data = await fetchSearchResults(searchQuery);
             if (data === null) { alert('Exceeded limit of send request to Amazon'); return; }

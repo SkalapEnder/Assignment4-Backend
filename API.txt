@@ -27,3 +27,29 @@ News: b2486c9f9e994497847a79e02ac4a8f8
 <!--            </div>-->
 <!--        <%// }); %>-->
 <!--    </div>-->
+
+<div>
+        <h3 class="text-center">Favorite GPUs Amazon</h3>
+        <div class="d-flex overflow-auto">
+            <% if (products_favorite.length > 0) { %>
+                <div class="favorites-container">
+                    <% products_favorite.forEach(product => { %>
+                        <div class="favorite-card">
+                            <img src="<%= product.image %>" alt="<%= product.title %>" class="product-image">
+                            <h3 class="product-title"><%= product.title %></h3>
+                            <p class="product-price"><%= product.price %></p>
+                            <a href="<%= product.url %>" target="_blank" class="buy-button">View on Amazon</a>
+                        </div>
+                    <% }); %>
+                </div>
+            <% } else { %>
+                <p>No favorite products found.</p>
+            <% } %>
+        </div>
+    </div>
+
+   <form action="/add-gpu" method="POST">
+                                       <input type="hidden" name="gpuModel" value="${product.product_title}">
+                                       <input type="hidden" name="gpuIdentifier" value="${product.product_url}">
+                                       <button type="submit" class="btn btn-primary" onclick="addFavorite('<% product.product_url %>')">Add to Favorite</button>
+                                   </form>

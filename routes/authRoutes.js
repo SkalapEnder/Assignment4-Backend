@@ -217,7 +217,16 @@ router.get('/profile', isAuthenticated, async (req, res) => {
     return res.render('profile/profile', {user});
 })
 
+router.get('/clearhistory', isAuthenticated, async (req, res) => {
+    const user = await getUser(req.session.userId);
+    if (user === null) {
+        return res.status(400).json({errorMessage: 'User not found'});
+    }
 
+    user.history_gpus = []
+    await user.save()
+    return res.render('profile/profile', {user});
+})
 
 // RESET PASSWORD PART
 router.get('/password-reset', (req, res) => res.render('reset/reset_password'));

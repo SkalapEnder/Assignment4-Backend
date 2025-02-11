@@ -13,14 +13,42 @@ const isAuthenticated = (req, res, next) => {
     res.redirect('/login');
 };
 
+// async function getFavAmazon(urls) {
+//     const axios = require('axios');
+//     const apiKey = process.env.AMAZON_API_KEY;
+//     const apiHost = 'real-time-amazon-data.p.rapidapi.com';
+//     const apiUrl = 'https://real-time-amazon-data.p.rapidapi.com/search';
+//
+//     const results = await Promise.all(urls.map(async (asin) => {
+//         try {
+//             const response = await axios.get(apiUrl, {
+//                 params: { product_url: asin },
+//                 headers: {
+//                     'x-rapidapi-key': apiKey,
+//                     'x-rapidapi-host': apiHost
+//                 }
+//             });
+//             return response.data;
+//         } catch (error) {
+//             console.error(`Error fetching data for ASIN ${asin}:`, error);
+//             return null;
+//         }
+//     }));
+//
+//     return results.filter(item => item !== null);
+// }
+
 router.get('/build', isAuthenticated, async (req, res) => {
     try {
         const user = await User.findOne({ user_id: req.session.userId });
         const products_recent = user !== null ? user.history_gpus : [] ;
+        //const urls = user !== null ? user.favorite_gpus : [];
+        //const favorites = urls !== [] ? await getFavAmazon(urls) : [];
 
         res.render('tasks/build', {
             products: [],
             products_recent: products_recent,
+            //products_favorite: favorites,
         });
     } catch (error) {
         console.error('Error fetching recently viewed GPUs:', error);
@@ -93,10 +121,10 @@ router.get('/api/gpus/:gpu', async (req, res) => {
             .map(([key, value]) => ({ identifier: key, ...value }));
 
         if (filteredGPUs.length === 0) {
-            return res.render('templates/error', {errorMessage: 'GPU not found' });
+            return res.status(400).json({errorMessage: 'GPU not found' });
         }
 
-        res.json({ gpu: filteredGPUs[0] });
+        res.json(filteredGPUs[0]);
     } catch (error) {
         console.error('Error fetching GPU data:', error);
         return res.render('templates/error', {errorMessage: 'Failed to fetch GPU data' });
@@ -106,19 +134,20 @@ router.get('/api/gpus/:gpu', async (req, res) => {
 router.post('/api/gpus/specific', async (req, res) => {
     try {
         const { search } = req.body;
+        console.log('Search:' + search)
         const apiUrl = 'https://raw.githubusercontent.com/voidful/gpu-info-api/gpu-data/gpu.json';
         const response = await axios.get(apiUrl);
         const allGPUs = response.data;
 
         const filteredGPUs = Object.entries(allGPUs)
-            .filter(([key, value]) => key.toLowerCase().includes(search.toLowerCase()))
+            .filter(([key, value]) => value.Model.toLowerCase().includes(search.toLowerCase()))
             .map(([key, value]) => ({ identifier: key, ...value }));
-
+        
         if (filteredGPUs.length === 0) {
             return res.status(400).json({errorMessage: 'GPU not found' });
         }
 
-        res.json({ gpu: filteredGPUs[0] });
+        res.status(200).json(filteredGPUs[0]);
     } catch (error) {
         console.error('Error fetching GPU data:', error);
         return res.render('templates/error', {errorMessage: 'Failed to fetch GPU data' });
@@ -140,7 +169,29 @@ router.post('/add-gpu', isAuthenticated, async (req, res) => {
 
         user.history_gpus.push({ gpuModel, gpuIdentifier: gpuIdentifier, createdAt: new Date() });
         await user.save();
-        res.status(200);
+        res.status(200).send();
+    } catch (error) {
+        console.error('Error adding GPU:', error);
+        return res.render('templates/error', {errorMessage: 'Failed to add GPU' });
+    }
+});
+
+router.post('/add-gpu-fav', isAuthenticated, async (req, res) => {
+    try {
+        const { gpuUrl } = req.body;
+
+        const user = await User.findOne({ user_id: req.session.userId });
+        if (user === null) {
+            return res.status(400).json({errorMessage: 'User does not exist'});
+        }
+
+        if (user.favorite_gpus.length >= 5) {
+            user.favorite_gpus.shift();
+        }
+
+        user.favorite_gpus.push(gpuUrl);
+        await user.save();
+        res.status(200).send();
     } catch (error) {
         console.error('Error adding GPU:', error);
         return res.render('templates/error', {errorMessage: 'Failed to add GPU' });

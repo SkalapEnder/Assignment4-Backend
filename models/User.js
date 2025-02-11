@@ -27,6 +27,7 @@ const userSchema = new mongoose.Schema({
         }],
         default: [],
     },
+    favorite_gpus: { type: [String], default: [] },
     history_gpus: {
         type: [
             {
