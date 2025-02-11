@@ -29,13 +29,14 @@
 </head>
 <body>
 <%- include('../templates/navbar'); %>
+
 <div class="container bg-white shadow rounded my-3 p-5 pb-4">
     <h1 class="text-center mb-4">GPU select</h1>
 
     <div id="gpus-recent" class="mb-4">
         <h3 class="text-center">Recent GPUs</h3>
         <div class="d-flex overflow-auto">
-            <% if (products_recent && products_recent.length > 0) { %>
+            <% if (products_recent.length > 0) { %>
                 <% products_recent.forEach(product => { %>
                     <div class="col-md-4 col-lg-3 ms-4 mb-4">
                         <div class="card h-100">
@@ -44,8 +45,8 @@
                                 <h6 class="card-subtitle mb-2 text-muted"><%= convertData(product.createdAt) %></h6>
                             </div>
                             <div class="card-footer d-flex justify-content-around">
-                                <input type="hidden" class="recent-gpu" id="<%= product.gpuIdentifier %>" value="<%= product.gpuIdentifier %>">
-                                <button class="btn btn-outline-primary fs-4" id="gpu-find-recent">Find</button>
+                                <input type="hidden" class="recent-gpu" id="gpu-<%= product.gpuIdentifier %>" value="<%= product.gpuIdentifier %>">
+                                <button class="btn btn-outline-primary fs-4" onclick="findRecent('<%= product.gpuIdentifier%>')">Find</button>
                             </div>
                         </div>
                     </div>
@@ -92,7 +93,7 @@
         <div id="search-amazon" class="row">
 
         </div>
-    </div>
+    </div >
 </div>
 
 <div class="py-2 text-center fs-5    text-white bg-dark">
@@ -167,15 +168,14 @@
     }
 
     async function addGPUToRecent(gpu) {
+        console.log('gpu')
+        console.log(gpu.Model)
         const response = await fetch(`/add-gpu`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                gpuModel: gpu.Model,
-                gpuIdentifier: gpu.identifier
-            }),
+            body: JSON.stringify({ gpuModel: gpu.Model, gpuIdentifier: gpu.identifier }),
         });
-        console.log(response.status)
+
         if (!response.ok) throw new Error("Failed to add recent GPU");
     }
 
@@ -223,42 +223,41 @@
 
     searchButton.addEventListener("click", async () => {
         const searchQuery = gpuSelect.value;
-        if (!searchQuery) {
+        console.log(searchQuery);
+        if (searchQuery === null) {
             alert("Please enter a search term.");
             return;
         }
 
         try {
             const gpu = await fetchGPUData(searchQuery);
-            await addGPUToRecent(gpu);
+            await addGPUToRecent(gpu.gpu);
 
             const data = await fetchSearchResults(searchQuery);
             const resultsContainer = document.getElementById("search-amazon");
             renderProducts(data, resultsContainer);
-            console.log("HERE!")
         } catch (error) {
             console.error("Error:", error);
             alert(error.message);
         }
     });
 
-    gpuRecentButton.addEventListener('click', async () => {
-        const searchQuery = gpuSelect.value;
-        if (!searchQuery) {
+    async function findRecent(searchQuery) {
+        if (searchQuery === null) {
             alert('Please enter a search term.');
             return;
         }
 
         try {
             const dataGpu = await fetchGPUData(searchQuery);
-            console.log(dataGpu);
+            console.log('GPU', dataGpu)
             await addGPUToRecent(dataGpu);
 
             const option = document.createElement('option');
-            option.value = dataGpu.Model;
-            option.textContent = `${dataGpu.Model} - ${dataGpu.identifier}`;
+            option.value = dataGpu.gpu.Model;
+            option.textContent = `${dataGpu.gpu.Model} - ${dataGpu.gpu.identifier}`;
             gpuSelect.appendChild(option);
-            gpuSelect.value = dataGpu.Model;
+            gpuSelect.value = dataGpu.gpu.Model;
 
             addDetailsGpu(dataGpu);
 
@@ -267,19 +266,8 @@
             renderProducts(data, resultsContainer);
         } catch (error) {
             console.error('Error:', error);
-            alert('An error occurred. Please try again.');
+            alert('An error occurred: ' + error);
         }
-    });
-
-    async function addRecentGpu(gpu) {
-        console.log(gpu);
-
-        const response = await fetch(`/add-gpu`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({gpuModel: gpu.Model, gpuIdentifier: gpu.identifier})
-        });
-        return response.ok;
     }
 
     function addDetailsGpu(gpu) {
