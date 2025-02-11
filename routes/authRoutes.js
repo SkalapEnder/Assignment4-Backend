@@ -7,6 +7,7 @@ const { MailerSend, EmailParams, Sender, Recipient } = require("mailersend");
 const LocalStrategy = require('passport-local');
 const { body, validationResult } = require('express-validator');
 const crypto = require('crypto');
+const Item = require('../models/Item');
 require('dotenv').config();
 const router = express.Router();
 const adminCode = process.env.ADMIN_KEY;
@@ -381,6 +382,11 @@ router.post('/register/admin', [
 router.get('/admin', isAuthenticated, async (req, res) => {
     const users = await User.find({});
     res.render('profile/admin', {users});
+})
+
+router.get('/admin-items', isAuthenticated, async (req, res) => {
+    const items = await Item.find({});
+    res.render('profile/items', {items})
 })
 
 router.get('/delete-account/:id', isAuthenticated, async (req, res) => {

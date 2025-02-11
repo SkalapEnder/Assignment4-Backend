@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body{
+            background-color: #dbdbdb;
+        }
+    </style>
+</head>
+<body>
+<%- include('../templates/navbar'); %>
+
+<div class="container mt-5 p-5 bg-white shadow rounded">
+    <h1 class="mb-4 text-center">Admin Panel</h1>
+    <h3>All Items</h3>
+    <table class="table table-striped">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Images</th>
+            <th>Created At</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <% items.forEach(item => { %>
+            <tr>
+                <td><%= item._id %></td>
+                <td><%= item.name %></td>
+                <td><%= item.description %></td>
+                <td>
+                    <% item.images.forEach(image => { %>
+                        <img src="<%= image %>" alt="Item Image" width="50">
+                    <% }) %>
+                </td>
+                <td><%= convertDate(item.createdAt) %></td>
+                <td>
+                    <form action="/items/update-item/<%= item._id %>" method="GET" class="d-inline">
+                        <button type="submit" class="btn btn-warning btn-sm">Update</button>
+                    </form>
+                    <form action="/items/delete-item/<%= item._id %>" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                    </form>
+                </td>
+            </tr>
+        <% }) %>
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Item Form -->
+<div class="container w-50 my-4 p-5 bg-white shadow rounded text-center">
+    <form action="/items/add-item" method="POST" class="mt-3">
+        <h3>Add New Item</h3>
+        <div class="form-floating w-50 mx-auto">
+            <input type="text" class="form-control my-3" id="nameEn" name="nameEn" required>
+            <label for="nameEn" class="fs-6">Name (English)</label>
+        </div>
+
+        <div class="form-floating w-50 mx-auto">
+            <textarea class="form-control my-3" id="descEn" name="descEn" required></textarea>
+            <label for="descEn" class="fs-6">Description (English)</label>
+        </div>
+
+        <div class="form-floating w-50 mx-auto">
+            <input type="text" class="form-control my-3" id="imageUrls" name="imageUrls" required>
+            <label for="imageUrls" class="fs-6">Image URLs (comma-separated)</label>
+        </div>
+
+        <button type="submit" class="btn btn-outline-success fs-4">Create Item</button>
+    </form>
+</div>
+
+
+<%- include('../templates/footer'); %>
+</body>
+</html>

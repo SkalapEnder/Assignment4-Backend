@@ -10,8 +10,6 @@ const newsRouter = require('./routes/newsRoutes');
 const buildRouter = require('./routes/buildRoutes');
 const itemRouter = require('./routes/itemRoutes');
 const Item = require('./models/Item');
-const axios = require('axios');
-const NASA_API_KEY = process.env.NASA_API_KEY;
 const app = express();
 const PORT = 3000;
 
@@ -50,8 +48,8 @@ app.use('/', buildRouter);
 app.use('/items', itemRouter)
 
 app.get('/', async (req, res) => {
-    const photo = await getPlanetPhotoOfDay();
-    res.render("index", {photo})
+    const items = await Item.find();
+    res.render("index", {items})
 })
 
 // Start the server
@@ -73,29 +71,6 @@ function convertData(timestamp) {
 
 function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
-}
-
-async function getPlanetPhotoOfDay() {
-    try {
-        const response = await axios.get(`https://api.nasa.gov/planetary/apod?api_key=${NASA_API_KEY}`);
-        const data = await response.data;
-
-        if (data['media_type'] === 'image') {
-            console.log(data['url']);
-            return {
-                success: true,
-                title: data.title,
-                description: data['explanation'],
-                imageUrl: data['url'],
-                date: data.date
-            };
-        } else {
-            return { success: false, error: 'Today’s APOD is not an image, it might be a video or another media type.' };
-        }
-    } catch (error) {
-        console.error('Error fetching APOD:', error.message);
-        return { success: false, error: 'Failed to retrieve the planet photo of the day' };
-    }
 }
 
 

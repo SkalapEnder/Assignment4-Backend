@@ -27,8 +27,16 @@ const userSchema = new mongoose.Schema({
         }],
         default: [],
     },
-    history_gpus: { type: [String], default: [] },
-
+    history_gpus: {
+        type: [
+            {
+                gpuModel: { type: String},
+                gpuIdentifier: { type: String},
+                createdAt: { type: Date, default: Date.now }
+            }
+        ],
+        default: []
+    },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
     deletedAt: { type: Date, default: null },

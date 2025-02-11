@@ -10,25 +10,25 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // CREATE
-router.post("/add", upload.array("images", 3), async (req, res) => {
+router.post("/add-item", upload.array("images", 3), async (req, res) => {
     try {
-        const { nameEn, nameOther, descEn, descOther } = req.body;
-        const imagePaths = req.files.map((file) => file.path);
+        const { nameEn, descEn, imagePaths } = req.body;
+        const images = imagePaths.split(',');
 
         if (imagePaths.length !== 3) {
-            return res.status(400).json({ error: "Exactly 3 images are required." });
+            return res.render('templates/error', { errorMessage: "Exactly 3 images are required."});
         }
 
         const newItem = new Item({
-            name: { en: nameEn, otherLang: nameOther },
-            description: { en: descEn, otherLang: descOther },
-            images: imagePaths,
+            name: nameEn,
+            description: descEn,
+            images: images,
         });
 
         await newItem.save();
-        res.status(201).json({ message: "Item added successfully", item: newItem });
+        res.redirect("/items");
     } catch (error) {
-        res.status(500).json({ error: "Internal Server Error" });
+        return res.render('templates/error', { errorMessage: "Internal Server Error" + error });
     }
 });
 
@@ -36,14 +36,14 @@ router.post("/add", upload.array("images", 3), async (req, res) => {
 router.get("/", async (req, res) => {
     try {
         const items = await Item.find();
-        res.json(items);
+        res.render("tasks/items", {items});
     } catch (error) {
-        res.status(500).json({ error: "Internal Server Error" });
+        return res.render('templates/error', { errorMessage: "Internal Server Error" });
     }
 });
 
 // UPDATE
-router.put("/edit/:id", upload.array("images", 3), async (req, res) => {
+router.put("/update-item/:id", upload.array("images", 3), async (req, res) => {
     try {
         const { nameEn, nameOther, descEn, descOther } = req.body;
         let updateData = {
@@ -57,27 +57,27 @@ router.put("/edit/:id", upload.array("images", 3), async (req, res) => {
         }
 
         const updatedItem = await Item.findByIdAndUpdate(req.params.id, updateData, { new: true });
-        if (!updatedItem) return res.status(404).json({ error: "Item not found" });
+        if (!updatedItem) return res.render('templates/error', { errorMessage: "Item not found" });
 
-        res.json({ message: "Item updated successfully", item: updatedItem });
+        res.redirect('/items');
     } catch (error) {
-        res.status(500).json({ error: "Internal Server Error" });
+        return res.render('templates/error', { errorMessage: "Internal Server Error" });
     }
 });
 
 // DELETE
-router.delete("/delete/:id", async (req, res) => {
+router.delete("/delete-item/:id", async (req, res) => {
     try {
         const deletedItem = await Item.findByIdAndUpdate(
             req.params.id,
             { deletedAt: Date.now() },
             { new: true }
         );
-        if (!deletedItem) return res.status(404).json({ error: "Item not found" });
+        if (!deletedItem) return res.render('templates/error', { errorMessage: "Item not found" });
 
-        res.json({ message: "Item deleted successfully", item: deletedItem });
+        res.redirect('/items');
     } catch (error) {
-        res.status(500).json({ error: "Internal Server Error" });
+        return res.render('templates/error', { errorMessage: "Internal Server Error" });
     }
 });
 

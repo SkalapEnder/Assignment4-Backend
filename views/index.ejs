@@ -17,27 +17,45 @@
 
 <main class="container-fluid text-center mt-4 p-5 w-50 shadow bg-white rounded">
     <h1>Welcome to Assignment 4!</h1>
-    <p class="fs-4">Welcome to my assignment 4! There you can see News about Space.</p>
-    <p class="fs-4">Also you can search interesting stars!</p>
-    <a class="link-offset-2 link-underline link-underline-opacity-0 fs-4 fw-bold" href="/build">Go to search star</a>
+    <p class="fs-4">Welcome to my assignment 4! There you can see News about GPU.</p>
+    <p class="fs-4">Also you can search GPU!</p>
+    <a class="link-offset-2 link-underline link-underline-opacity-0 fs-4 fw-bold" href="/build">Go to search GPU</a>
 
-
-    <% if(photo !== null ) {%>
-        <h2 class="mt-4">Photo of Day</h2>
-        <img src="<% photo.imageUrl %>" alt="<% photo.title %>"/>
-        <h3> <% photo.title %> </h3>
-        <p> <% photo.description %></p>
-    <% } else {%>
-        <div>
-            <h4>Error during fetching photo!</h4>
-        </div>
-    <% }%>
 </main>
 
 <main class="container-fluid text-center mt-4 p-5 w-50 shadow bg-white rounded">
     <h2 class="text-center">Featured Items</h2>
-
-
+    <div id="featured-items" class="container mt-5">
+        <div class="row">
+            <% items.forEach(item => { %>
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm">
+                        <div id="carousel<%= item._id %>" class="carousel slide" data-bs-ride="carousel">
+                            <div class="carousel-inner">
+                                <% item.images.forEach((image, index) => { %>
+                                    <div class="carousel-item <%= index === 0 ? 'active' : '' %>">
+                                        <img src="<%= image %>" class="d-block w-100" alt="Item Image">
+                                    </div>
+                                <% }) %>
+                            </div>
+                            <button class="carousel-control-prev" type="button" data-bs-target="#carousel<%= item._id %>" data-bs-slide="prev">
+                                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Previous</span>
+                            </button>
+                            <button class="carousel-control-next" type="button" data-bs-target="#carousel<%= item._id %>" data-bs-slide="next">
+                                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Next</span>
+                            </button>
+                        </div>
+                        <div class="card-body text-center">
+                            <h5 class="card-title"><%= item.name.en %></h5>
+                            <p class="card-text"><%= item.description.en %></p>
+                        </div>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+    </div>
 </main>
 
 <%- include('./templates/footer'); %>

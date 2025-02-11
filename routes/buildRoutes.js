@@ -8,11 +8,12 @@ mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('Build: Connected to MongoDB Atlas'))
     .catch((err) => console.error('Error connecting to MongoDB Atlas:', err));
 
-router.get('/build', async (req, res) => {
-    if (req.session.userId === undefined) {
-        return res.redirect('/login');
-    }
+const isAuthenticated = (req, res, next) => {
+    if (req.isAuthenticated()) return next();
+    res.redirect('/login');
+};
 
+router.get('/build', isAuthenticated, async (req, res) => {
     try {
         const user = await User.findOne({ user_id: req.session.userId });
         const products_recent = user ? user.history_gpus : [];
@@ -110,34 +111,27 @@ router.get('/api/gpus/:gpu', async (req, res) => {
 
 router.post('/add-gpu', async (req, res) => {
     try {
-        const gpu = req.body;
+        const { gpuModel, gpuIdentifier } = req.body;
         const userId = req.session.userId;
         const user = await User.findOne({user_id: userId});
         if (user === null) {
             return res.render('templates/error', {errorMessage: 'User not found'});
         }
 
-        const newsGroup = user.history_gpus;
-        if (newsGroup.length > 4) {
-            newsGroup.pop()
+        if (user.history_gpus.length > 5) {
+            user.history_gpus.shift()
         }
-        const update = {
-            $push: {
-                history_gpus: {
-                    $each: [gpu.Model],
-                    $position: 0,
-                },
-            },
-        };
 
-        const result = await User.findOneAndUpdate({user_id: userId}, update)
-        console.log(`${result.modifiedCount} document updated`);
-        res.redirect('tasks/build');
+        user.history_gpus.push({
+            gpuModel: gpuModel,
+            gpuIdentifier: gpuIdentifier || null,
+            createdAt: new Date()
+        });
+
+        await user.save();
     } catch (error) {
         console.error(error);
     }
 });
-
-
 
 module.exports = router;
