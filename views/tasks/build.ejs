@@ -272,10 +272,10 @@
 
 
 
-            //const data = await fetchSearchResults(searchQuery);
-            //if (data === null) { alert('Exceeded limit of send request to Amazon'); return; }
-            //const resultsContainer = document.getElementById('search-amazon');
-            //renderProducts(data, resultsContainer);
+            const data = await fetchSearchResults(searchQuery);
+            if (data === null) { alert('Exceeded limit of send request to Amazon'); return; }
+            const resultsContainer = document.getElementById('search-amazon');
+            renderProducts(data, resultsContainer);
         } catch (error) {
             console.error('Error:' + error);
             alert('An error occurred: ' + error);
