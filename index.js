@@ -23,6 +23,7 @@ app.set('views', './views');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static('public'));
+app.use('/uploads', express.static('uploads'));
 
 // Session middleware
 app.use(session({
@@ -45,11 +46,17 @@ app.use((req, res, next) => {
 app.use('/', authRouter);
 app.use('/', newsRouter);
 app.use('/', buildRouter);
-app.use('/items', itemRouter)
+app.use('/', itemRouter)
 
 app.get('/', async (req, res) => {
     const items = await Item.find();
     res.render("index", {items})
+})
+
+app.get("/items", async function (req, res) {
+    const items = await Item.find();
+    if(items === null) return res.render("profile/items", {items: []});
+    return res.render("profile/items", {items: items});
 })
 
 // Start the server
@@ -76,4 +83,7 @@ function capitalizeFirstLetter(string) {
 
 app.locals.convertData = convertData;
 app.locals.capitalizeFirstLetter = capitalizeFirstLetter;
+
+
+
 

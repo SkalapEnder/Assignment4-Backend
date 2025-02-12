@@ -1,83 +1,138 @@
 const express = require("express");
 const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
 const Item = require("../models/Item");
 const router = express.Router();
 
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, "uploads/"),
-    filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
+    destination: function (req, file, cb) {
+        cb(null, "uploads/");
+    },
+    filename: function (req, file, cb) {
+        cb(null, file.fieldname + "-" + Date.now() + path.extname(file.originalname));
+    },
 });
-const upload = multer({ storage });
 
-// CREATE
-router.post("/add-item", upload.array("images", 3), async (req, res) => {
+const fileFilter = (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+
+    if (extname && mimetype) {
+        return cb(null, true);
+    } else {
+        return cb(new Error("Only images are allowed"));
+    }
+};
+
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: fileFilter,
+});
+
+router.post("/add-item", upload.array("images", 5), async (req, res) => {
     try {
-        const { nameEn, descEn, imagePaths } = req.body;
-        const images = imagePaths.split(',');
+        const { name, description, nameRu, descriptionRu, } = req.body;
 
-        if (imagePaths.length !== 3) {
-            return res.render('templates/error', { errorMessage: "Exactly 3 images are required."});
+        if (!name || !description || !nameRu || !descriptionRu) {
+            return res.status(400).json({ errorMessage: "Name and description are required." });
         }
 
+        if (!req.files || req.files.length < 3) {
+            return res.status(400).json({ errorMessage: "You must upload at least 3 images." });
+        }
+
+        const imagePaths = req.files.map(file => `uploads/${file.filename}`);
+
         const newItem = new Item({
-            name: nameEn,
-            description: descEn,
-            images: images,
+            name,
+            nameRu,
+            description,
+            descriptionRu,
+            images: imagePaths,
+            createdAt: new Date(),
+            updatedAt: new Date(),
         });
 
         await newItem.save();
-        res.redirect("/items");
+        res.status(201).json({ message: "Item successfully created!" });
     } catch (error) {
-        return res.render('templates/error', { errorMessage: "Internal Server Error" + error });
+        console.error("Error creating item:", error);
+        res.status(500).json({ errorMessage: "Internal Server Error: " + error.message });
     }
 });
 
-// READ
-router.get("/", async (req, res) => {
-    try {
-        const items = await Item.find();
-        res.render("tasks/items", {items});
-    } catch (error) {
-        return res.render('templates/error', { errorMessage: "Internal Server Error" });
-    }
-});
-
-// UPDATE
-router.put("/update-item/:id", upload.array("images", 3), async (req, res) => {
-    try {
-        const { nameEn, nameOther, descEn, descOther } = req.body;
-        let updateData = {
-            name: { en: nameEn, otherLang: nameOther },
-            description: { en: descEn, otherLang: descOther },
-            updatedAt: Date.now(),
-        };
-
-        if (req.files.length === 3) {
-            updateData.images = req.files.map((file) => file.path);
-        }
-
-        const updatedItem = await Item.findByIdAndUpdate(req.params.id, updateData, { new: true });
-        if (!updatedItem) return res.render('templates/error', { errorMessage: "Item not found" });
-
-        res.redirect('/items');
-    } catch (error) {
-        return res.render('templates/error', { errorMessage: "Internal Server Error" });
-    }
-});
-
-// DELETE
 router.delete("/delete-item/:id", async (req, res) => {
     try {
-        const deletedItem = await Item.findByIdAndUpdate(
-            req.params.id,
-            { deletedAt: Date.now() },
-            { new: true }
-        );
-        if (!deletedItem) return res.render('templates/error', { errorMessage: "Item not found" });
+        const id = req.params.id;
 
-        res.redirect('/items');
+        const item = await Item.findOne({_id: id});
+        if (!item) {
+            return res.status(404).json({ errorMessage: "Item not found" });
+        }
+
+        item.images.forEach((imagePath) => {
+            const fullPath = path.join(__dirname, "..", imagePath);
+            fs.unlink(fullPath, (err) => {
+                if (err && err.code !== "ENOENT") {
+                    console.error("Error deleting image:", err);
+                }
+            });
+        });
+
+        // Delete item from database
+        await Item.findOneAndDelete({_id: id});
+
+        res.json({ message: "Item and images successfully deleted" });
     } catch (error) {
-        return res.render('templates/error', { errorMessage: "Internal Server Error" });
+        console.error("Error deleting item:", error);
+        res.status(500).json({ errorMessage: "Internal Server Error: " + error.message });
+    }
+});
+
+// Update Item & Images
+router.put('/items/update/:id', async (req, res) => {
+    try {
+        const { name, nameRu, description, descriptionRu } = req.body;
+        await Item.findByIdAndUpdate(req.params.id, { name, nameRu, description, descriptionRu });
+        res.json({ message: "Item updated successfully!" });
+    } catch (error) {
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
+router.post('/items/upload-image/:id', upload.single('image'), async (req, res) => {
+    try {
+        const item = await Item.findById(req.params.id);
+        if (!item) {
+            return res.status(404).json({ message: "Item not found" });
+        }
+
+        item.images.push(`/uploads/${req.file.filename}`); // Store image path
+        await item.save();
+
+        res.json({ message: "Image uploaded successfully!", imageUrl: `/uploads/${req.file.filename}` });
+    } catch (error) {
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
+router.delete('/items/delete-image/:id/:index', async (req, res) => {
+    try {
+        const { id, index } = req.params;
+        const item = await Item.findById(id);
+        if (!item) {
+            return res.status(404).json({ message: "Item not found" });
+        }
+
+        item.images.splice(index, 1); // Remove image by index
+        await item.save();
+
+        res.json({ message: "Image deleted successfully!" });
+    } catch (error) {
+        res.status(500).json({ message: "Server error" });
     }
 });
 

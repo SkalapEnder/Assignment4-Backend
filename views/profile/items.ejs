@@ -14,15 +14,58 @@
 <body>
 <%- include('../templates/navbar'); %>
 
-<div class="container mt-5 p-5 bg-white shadow rounded">
+<!-- Add Item Form -->
+<div class="container w-50 my-4 p-5 bg-white shadow rounded text-center">
     <h1 class="mb-4 text-center">Admin Panel</h1>
+    <form id="createItemForm" enctype="multipart/form-data">
+        <h3>Add New Item</h3>
+
+        <div class="form-floating w-50 mx-auto">
+            <input type="text" class="form-control my-3" id="name" name="name" required>
+            <label for="name" class="fs-6">Name</label>
+        </div>
+
+        <div class="form-floating w-50 mx-auto">
+            <input type="text" class="form-control my-3" id="nameRu" name="nameRu" required>
+            <label for="nameRu" class="fs-6">Name (Ru)</label>
+        </div>
+
+        <div class="form-floating w-75 mx-auto">
+            <textarea class="form-control my-3" id="description" name="description" required></textarea>
+            <label for="description" class="fs-6">Description</label>
+        </div>
+
+        <div class="form-floating w-75 mx-auto">
+            <textarea class="form-control my-3" id="descriptionRu" name="descriptionRu" required></textarea>
+            <label for="descriptionRu" class="fs-6">Description (Ru)</label>
+        </div>
+
+        <div class="form-floating w-75 mx-auto">
+            <input type="file" class="form-control my-3" id="images" name="images" accept=".jpg, .png" multiple required>
+            <label for="images" class="fs-6">Upload Images (at least 3)</label>
+        </div>
+
+        <button type="submit" class="btn btn-outline-success fs-4">Create Item</button>
+    </form>
+
+    <div id="error" style="display: none" class="alert alert-danger mt-2" role="alert">
+
+    </div>
+
+    <div id="success"  style="display: none" class="alert alert-success mt-2" role="alert">
+
+    </div>
+</div>
+
+<div class="container my-5 p-5 bg-white shadow rounded">
     <h3>All Items</h3>
     <table class="table table-striped">
         <thead>
         <tr>
-            <th>ID</th>
             <th>Name</th>
+            <th>Name (Ru)</th>
             <th>Description</th>
+            <th>Description (Ru)</th>
             <th>Images</th>
             <th>Created At</th>
             <th>Actions</th>
@@ -30,23 +73,26 @@
         </thead>
         <tbody>
         <% items.forEach(item => { %>
-            <tr>
-                <td><%= item._id %></td>
-                <td><%= item.name %></td>
-                <td><%= item.description %></td>
+            <tr data-id="<%= item._id %>">
+                <td><input type="text" class="form-control name" value="<%= item.name %>"></td>
+                <td><input type="text" class="form-control nameRu" value="<%= item.nameRu %>"></td>
+                <td><textarea class="form-control description"><%= item.description %></textarea></td>
+                <td><textarea class="form-control descriptionRu"><%= item.descriptionRu %></textarea></td>
                 <td>
-                    <% item.images.forEach(image => { %>
-                        <img src="<%= image %>" alt="Item Image" width="50">
-                    <% }) %>
+                    <div class="image-container">
+                        <% item.images.forEach((image, index) => { %>
+                            <div class="image-wrapper">
+                                <img src="<%= image %>" alt="Item Image" width="100">
+                                <button class="btn btn-danger btn-sm delete-image" data-index="<%= index %>">×</button>
+                            </div>
+                        <% }) %>
+                    </div>
+                    <input type="file" class="form-control image-upload mt-2" accept=".jpg, .png" multiple>
                 </td>
-                <td><%= convertDate(item.createdAt) %></td>
+                <td><%= new Date(item.createdAt).toLocaleString() %></td>
                 <td>
-                    <form action="/items/update-item/<%= item._id %>" method="GET" class="d-inline">
-                        <button type="submit" class="btn btn-warning btn-sm">Update</button>
-                    </form>
-                    <form action="/items/delete-item/<%= item._id %>" method="POST" class="d-inline">
-                        <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
-                    </form>
+                    <button class="btn btn-success btn-sm save-item fs-5">Update</button>
+                    <button class="btn btn-outline-danger mt-2 btn-sm fs-5" onclick="deleteItem('<%= item._id %>')">Delete</button>
                 </td>
             </tr>
         <% }) %>
@@ -54,30 +100,217 @@
     </table>
 </div>
 
-<!-- Add Item Form -->
-<div class="container w-50 my-4 p-5 bg-white shadow rounded text-center">
-    <form action="/items/add-item" method="POST" class="mt-3">
-        <h3>Add New Item</h3>
-        <div class="form-floating w-50 mx-auto">
-            <input type="text" class="form-control my-3" id="nameEn" name="nameEn" required>
-            <label for="nameEn" class="fs-6">Name (English)</label>
-        </div>
 
-        <div class="form-floating w-50 mx-auto">
-            <textarea class="form-control my-3" id="descEn" name="descEn" required></textarea>
-            <label for="descEn" class="fs-6">Description (English)</label>
-        </div>
-
-        <div class="form-floating w-50 mx-auto">
-            <input type="text" class="form-control my-3" id="imageUrls" name="imageUrls" required>
-            <label for="imageUrls" class="fs-6">Image URLs (comma-separated)</label>
-        </div>
-
-        <button type="submit" class="btn btn-outline-success fs-4">Create Item</button>
-    </form>
+<div class="py-2 text-center fs-5 text-white bg-dark">
+    <h4>Alisher Berik | IT-2308</h4>
 </div>
-
-
-<%- include('../templates/footer'); %>
 </body>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll(".save-item").forEach(button => {
+            button.addEventListener("click", async function () {
+                const row = this.closest("tr");
+                const itemId = row.getAttribute("data-id");
+
+                const updatedData = {
+                    name: row.querySelector(".name").value,
+                    nameRu: row.querySelector(".nameRu").value,
+                    description: row.querySelector(".description").value,
+                    descriptionRu: row.querySelector(".descriptionRu").value,
+                };
+
+                // Send updated text data to server
+                try {
+                    const response = await fetch(`/items/update/${itemId}`, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(updatedData)
+                    });
+
+                    const result = await response.json();
+                    if (response.ok) {
+                        alert("Item updated successfully!");
+                    } else {
+                        alert("Error: " + result.message);
+                    }
+                } catch (error) {
+                    console.error("Error:", error);
+                }
+            });
+        });
+
+        // Handle image upload
+        document.querySelectorAll(".image-upload").forEach(input => {
+            input.addEventListener("change", async function () {
+                const row = this.closest("tr");
+                const itemId = row.getAttribute("data-id");
+                const file = this.files[0];
+
+                if (!file) return;
+
+                const formData = new FormData();
+                formData.append("image", file);
+
+                try {
+                    const response = await fetch(`/items/upload-image/${itemId}`, {
+                        method: "POST",
+                        body: formData
+                    });
+
+                    const result = await response.json();
+                    if (response.ok) {
+                        // Append new image to UI
+                        const imageContainer = row.querySelector(".image-container");
+                        const imgWrapper = document.createElement("div");
+                        imgWrapper.classList.add("image-wrapper");
+                        imgWrapper.innerHTML = `<img src="${result.imageUrl}" width="100">
+                                            <button class="btn btn-danger btn-sm delete-image">×</button>`;
+                        imageContainer.appendChild(imgWrapper);
+                        alert("Image uploaded successfully!");
+                    } else {
+                        alert("Error: " + result.message);
+                    }
+                } catch (error) {
+                    console.error("Error:", error);
+                }
+            });
+        });
+
+        // Handle image deletion
+        document.querySelectorAll(".delete-image").forEach(button => {
+            button.addEventListener("click", async function () {
+                const row = this.closest("tr");
+                const itemId = row.getAttribute("data-id");
+                const imageIndex = this.getAttribute("data-index");
+
+                try {
+                    const response = await fetch(`/items/delete-image/${itemId}/${imageIndex}`, {
+                        method: "DELETE"
+                    });
+
+                    const result = await response.json();
+                    if (response.ok) {
+                        this.closest(".image-wrapper").remove();
+                        alert("Image deleted successfully!");
+                    } else {
+                        alert("Error: " + result.message);
+                    }
+                } catch (error) {
+                    console.error("Error:", error);
+                }
+            });
+        });
+    });
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const createItemForm = document.getElementById("createItemForm");
+        const error = document.getElementById("error");
+        const success = document.getElementById("success");
+
+        createItemForm.addEventListener("submit", async function (event) {
+            event.preventDefault(); // Prevent page reload
+
+            const formData = new FormData();
+            const name = document.getElementById("name").value.trim();
+            const description = document.getElementById("description").value.trim();
+
+            const nameRu = document.getElementById("nameRu").value.trim();
+            const descriptionRu = document.getElementById("descriptionRu").value.trim();
+
+            const images = document.getElementById("images").files;
+
+            if (!name || !description || !nameRu || !descriptionRu) {
+                await outputMsg("Name and Description are required.", "error");
+                return;
+            }
+            console.log(images.length);
+            if (images.length < 3) {
+                await outputMsg("You must upload exactly 3 images.", "error");
+                return;
+            }
+
+            formData.append("name", name);
+            formData.append("description", description);
+
+            formData.append("nameRu", nameRu);
+            formData.append("descriptionRu", descriptionRu);
+
+            for (let i = 0; i < images.length; i++) {
+                formData.append("images", images[i]);
+            }
+
+            try {
+                const response = await fetch("/add-item", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    await outputMsg(data.errorMessage || "Item creation failed", "error");
+                } else {
+                    await outputMsg("Item successfully created", "success");
+                    createItemForm.reset();
+                    setTimeout(() => location.reload(), 1000);
+                }
+
+
+            } catch (error) {
+                await outputMsg("An error occurred: " + error.message, "error");
+            }
+        });
+
+        async function outputMsg(msg, type) {
+            const message = await translateText2(msg);
+            if(type === 'error') {
+                removeSuccess();
+                outputError(message);
+            }
+            else {
+                removeError();
+                outputSuccess(message);
+            }
+        }
+
+        function removeError() {
+            error.style.display = "none";
+        }
+
+        function removeSuccess() {
+            success.style.display = "none";
+        }
+
+        function outputError(message){
+            error.style.display = 'block';
+            error.innerHTML = `<p>${message}</p>`;
+        }
+
+        function outputSuccess(message){
+            success.style.display = 'block';
+            success.innerHTML = `<p>${message}</p>`;
+        }
+    });
+
+
+    async function deleteItem(itemId) {
+        if (confirm("Are you sure you want to delete this item?")) {
+            try {
+                const response = await fetch(`/delete-item/${itemId}`, { method: "DELETE" });
+                if (response.ok) {
+                    alert("Item deleted successfully");
+                    location.reload();
+                } else {
+                    alert("Failed to delete item");
+                }
+            } catch (error) {
+                alert("An error occurred: " + error.message);
+            }
+        }
+    }
+
+</script>
+
 </html>

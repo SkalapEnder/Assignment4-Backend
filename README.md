@@ -1,95 +1,63 @@
-# Assignment 4 | Alisher Berik | IT-2308
 
-This assignment is about Space. 
-#### The secret code for admin is 'admin1243'
+# Alisher Berik - IT-2308 - Assignment 4
+
+GitHub repository of Assignment 4, WEB Backend.
+
+#### Admin code: admin1243
+
 
 ## Deployment
 
-The server was deployed on Render's website. Click next link to move:
+You don't need to download any files to use API.
+I deployed server on Render's hosting.
 
-[https://assignment4-backend-y45w.onrender.com](https://assignment4-backend-y45w.onrender.com)
-
-
-## Demo
-
-Instruction to use website
-
-### Login & Registration
-
-First of all, you need to create account. 
-
-#### 1) Move to "Log In" link on Navbar.
-
-#### 2) Then click "Create new accout".
-
-#### 3) There you write name, email, password and your role. 
-  If you want to be admin, write code that I send you in teams!
-
-#### 4) After Registration, you will move to log in. Again, write your username and password.
-
-### GPU Part
-
-There you can search GPUs from dataset and Amazon
-
-#### 1) Type your GPU
-
-#### 2) Choose one.
-
-#### 3) Click search to find in Amazon.
-
-
-### News Part
-
-On each card of news, you have 2 buttons:
-
-#### 1) Read more - move you to real news page
-
-#### 2) Add to favorites - move specific news to favorite storage. There you can store your news.
-
-#### 3) Below, you will see that news articles was paginated into several pages.
+#### [Link to deployed website](https://assignment4-backend-y45w.onrender.com)
 
 
 ## Installation
 
-Install my-project with npm
+If you want to test it locally, download project, extract somewhere and. implement next commands in command prompt:
 
-```bash
-  npm install my-project
-  cd my-project
+```
+npm i axios body-parser bcryptjs crypto cookie-parser connect-flash dotenv ejs express express-session express-validator fs mailersend mongoose mongodb multer nodemon passport passport-local path
 ```
 
-Extract GitHub repository to my-project folder.
+Then, use next command to start local server
 
-Next, Open project folder in IDE.
-
-Then, open terminal of IDE and write next commands
-
-```bash
-  npm i axios express express-session express-validator passport passport-local connect-flash cookie-parser mailersend mongoose mongodb axios body-parser ejs nodemon bcryptjs
+```
+nodemon index
 ```
 
-Finally, start local server by next commands
 
-```bash
-  nodemon index
-```
-    
-## Documentation
+## Usage/Examples
 
-There I numerate used libraries
+About creating items:
 
-### Used libraries
-1. Nodemon - automatically update server if detects any changes in files
-2. Express - build more flexible web application
-3. Express Session - create user's session to keep its data (ID, username)
-4. Mongoose - library to connect with MongoDB Atlas
-5. BcryptJs - hashing user password
-6. Axios - request and response part
-7. Body Parser - extended JSON Parser
-8. EJS - allows to use JS script in HTML, include templates and so on.
-9. Cookie Parser
-10. Passport & Passport Local - for authentification
-11. Mailer Send - to send messages to user's email
-12. Express Validator - validate email and password strength
+1) Fill all fields in create form and upload at least 3 images!
 
-### Used APIs
+P.S.: Each image must be not greater than 5Mb.
+
+2) When you create item. You can dynamically change text data and images.
+
+3) #### Update button changes only text data
+
+4) #### Delete button delete entire
+
+### About editing image array
+
+Near each images stay red button (It delete image).
+
+Below images located image uploader. It accepts only one image.
+
+After upload one image, it automatically upload image to item.
+
+
+## API used
+
+1. [GPU dataset](https://github.com/voidful/gpu-info-api)
+
+2. [Amazon Real-time API](https://rapidapi.com/letscrape-6bRBa3QguO5/api/real-time-amazon-data)
+
+3. [News API](https://newsapi.org/docs)
+
+

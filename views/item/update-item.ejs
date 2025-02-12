@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Update Item</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        body{
+            background-color: #dbdbdb;
+        }
+    </style>
+</head>
+<body>
+<%- include('../templates/navbar'); %>
+
+<div class="container bg-white shadow rounded w-50 mt-4 p-5 pb-4">
+    <h1 class="text-center">Update Page</h1>
+    <div>
+        <input type="hidden" id="item_id" value="<%= item._id %>" />
+
+        <!-- Name -->
+        <div class="w-50 mx-auto mt-4">
+            <label for="name" class="mb-2">Name:</label>
+            <input type="text" id="name" class="form-control" value="<%= item.name %>" required />
+        </div>
+
+        <!-- Description -->
+        <div class="w-50 mx-auto mt-4">
+            <label for="description" class="mb-2">Description:</label>
+            <input type="text" id="description" class="form-control" value="<%= item.description %>" required />
+        </div>
+
+        <!-- Existing Images -->
+        <div class="w-50 mx-auto mt-4">
+            <label class="mb-2">Existing Images:</label>
+            <div class="d-flex flex-wrap">
+                <% item.images.forEach((image, index) => { %>
+                    <div class="position-relative me-2">
+                        <img src="<%= image %>" alt="Item Image" width="100" height="100" class="rounded border">
+                        <button class="btn btn-sm btn-danger position-absolute top-0 end-0 remove-image" data-index="<%= index %>">X</button>
+                    </div>
+                <% }); %>
+            </div>
+        </div>
+
+        <!-- Upload New Images -->
+        <div class="w-50 mx-auto mt-4">
+            <label for="images" class="mb-2">Upload New Images:</label>
+            <input type="file" id="images" class="form-control" name="images" accept="image/*" multiple>
+        </div>
+
+        <!-- Buttons -->
+        <div class="mx-auto mt-4">
+            <button type="submit" id="updateBtn" class="btn btn-outline-success fs-5 my-3">Update Item</button>
+            <button class="btn btn-outline-danger fs-5" onclick="window.history.back()">Discard</button>
+        </div>
+    </div>
+
+    <div id="error" style="color: red; display: none" class="alert alert-danger mt-2" role="alert"></div>
+</div>
+
+<%- include('../templates/footer'); %>
+</body>
+<script>
+    const error = document.getElementById('error');
+    const updateBtn = document.getElementById('updateBtn');
+
+    updateBtn.addEventListener('click', async function () {
+        const name = document.getElementById('name').value;
+        const description = document.getElementById('description').value;
+        const item_id = document.getElementById('user_id').value;
+
+        if(name === '' || description === '') {
+            outputError('Please, fill out the fields');
+            return;
+        }
+
+        try {
+            const response = await fetch('/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ item_id, name, description }),
+                credentials: 'include'
+            });
+
+            if (response.redirected) {
+                window.location.href = response.url;
+            } else if (!response.ok) {
+                const data = await response.json();
+                outputMsg(data.errorMessage || 'Registration failed')
+            }
+        } catch (error) {
+            outputError('An error occurred:', error);
+        }
+    });
+
+    async function outputMsg(msg, type) {
+        const message = await translateText2(msg);
+        if(type === 'error') {
+            removeSuccess();
+            outputError(message);
+        }
+        else {
+            removeError();
+            outputSuccess(message);
+        }
+    }
+
+    function removeError() {
+        error.style.display = "none";
+    }
+
+    function removeSuccess() {
+        success.style.display = "none";
+    }
+
+    function outputError(message){
+        error.style.display = 'block';
+        error.innerHTML = `<p>${message}</p>`;
+    }
+
+    function outputSuccess(message){
+        success.style.display = 'block';
+        success.innerHTML = `<p>${message}</p>`;
+    }
+</script>
+</html>
